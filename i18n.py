@@ -10,268 +10,49 @@ from typing import Any, Dict, Optional
 LANGUAGE_SETTING_ID = "EasyRAG.Language"
 DEFAULT_LANGUAGE = "auto"
 
+_TRANSLATIONS: Dict[str, Dict[str, str]] = {}
+_LOCALES_DIR = Path(__file__).resolve().parent / "locales"
 
-_TRANSLATIONS: Dict[str, Dict[str, str]] = {
-    "en": {
-        "文档加载": "Document Loader",
-        "向量库构建(FAISS)": "Vector Store Builder (FAISS)",
-        "LM Studio API (高级)": "LM Studio API (Advanced)",
-        "LM Studio API (简约)": "LM Studio API (Simple)",
-        "选择文档（txt/json/md/pdf）。可用下方“上传文档”按钮上传到 input 目录后再选择。":
-            "Select a document (txt/json/md/pdf). Use the Upload Document button below to put a file into the input folder first.",
-        "无效文档: {document}": "Invalid document: {document}",
-        "不支持的文档类型: {document}": "Unsupported document type: {document}",
-        "请在 document 中选择或上传一个文档（txt/json/md/pdf）。":
-            "Please select or upload a document in the document field (txt/json/md/pdf).",
-        "不支持的文档类型: {suffix}，仅支持 txt/json/md/pdf。":
-            "Unsupported document type: {suffix}. Only txt/json/md/pdf are supported.",
-        "文档加载完成。总文件: {total}, 成功: {success}, 失败: {failed}":
-            "Document load complete. Total files: {total}, succeeded: {success}, failed: {failed}",
-        "仅允许使用 ComfyUI/models/embeddings 下的本地模型":
-            "Only local models under ComfyUI/models/embeddings are allowed.",
-        "未检测到可用 embedding 模型。请先把 sentence-transformers 模型放到 ComfyUI/models/embeddings。":
-            "No usable embedding model was found. Please place a sentence-transformers model in ComfyUI/models/embeddings first.",
-        "向量库构建完成: {index_name}, 文档数: {documents_count}, chunk数: {chunks_count}, 模型: {selected_model}, 目录: {index_dir}":
-            "Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}",
-        "模型选项来自 LM Studio API（默认地址: 127.0.0.1:1234）":
-            "Model options are fetched from the LM Studio API (default: 127.0.0.1:1234).",
-        "你是一个严谨的本地RAG助手，优先根据给定上下文回答。":
-            "You are a rigorous local RAG assistant. Prefer answering from the provided context.",
-        "日志开": "Logs on",
-        "日志关": "Logs off",
-        "流式开": "Streaming on",
-        "流式关": "Streaming off",
-        "运行前清理": "Clear before run",
-        "直接运行": "Run directly",
-        "卸载模型": "Unload model",
-        "保留模型": "Keep model",
-        "EasyRAG - 文档加载": "EasyRAG - Document Loader",
-        "EasyRAG - 向量库构建(FAISS)": "EasyRAG - Vector Store Builder (FAISS)",
-        "EasyRAG - LM Studio API (高级)": "EasyRAG - LM Studio API (Advanced)",
-        "EasyRAG - LM Studio API (简约)": "EasyRAG - LM Studio API (Simple)",
-        "EasyRAG 语言": "EasyRAG Language",
-        "跟随 ComfyUI": "Follow ComfyUI",
-        "中文": "Chinese",
-        "英文": "English",
-        "文档": "documents",
-        "摘要": "summary",
-        "RAG 索引": "rag_index",
-        "答案": "answer",
-        "上下文": "context_used",
-        "原始响应": "raw_response",
-        "LM Studio API 返回空模型列表。": "The LM Studio API returned an empty model list.",
-        "query must not be empty.": "Query must not be empty.",
-        "Index directory not found: {index_dir}": "Index directory not found: {index_dir}",
-        "faiss 未安装。请执行: pip install -r requirements.txt":
-            "faiss is not installed. Run: pip install -r requirements.txt",
-        "No documents provided.": "未提供任何文档。",
-        "index_name must not be empty.": "index_name 不能为空。",
-        "No chunks generated from documents.": "未能从文档中生成任何分块。",
-        "sentence-transformers 未安装。请执行: pip install -r requirements.txt":
-            "sentence-transformers is not installed. Run: pip install -r requirements.txt",
-        "Unsupported file extension: {suffix}": "不支持的文件扩展名: {suffix}",
-        "gc.collect failed: {error}": "gc.collect 失败: {error}",
-        "comfy model_management clear failed: {error}": "Comfy 模型管理清理失败: {error}",
-        "torch cuda clear failed: {error}": "torch CUDA 清理失败: {error}",
-        "model.cpu failed: {error}": "model.cpu 失败: {error}",
-        "model.to('cpu') failed: {error}": "model.to('cpu') 失败: {error}",
-        "torch cuda cleanup failed": "torch CUDA 清理失败",
-        "gc cleanup failed: {error}": "gc 清理失败: {error}",
-        "gc.collect": "gc.collect",
-        "comfy.model_management.unload_all_models": "Comfy 模型全部卸载",
-        "comfy.model_management.cleanup_models": "Comfy 模型清理",
-        "comfy.model_management.cleanup_models(True)": "Comfy 模型清理(True)",
-        "comfy.model_management.soft_empty_cache": "Comfy 软清理缓存",
-        "comfy.model_management.empty_cache": "Comfy 清理缓存",
-        "torch.cuda.empty_cache": "torch CUDA 清理缓存",
-        "gc.collect": "gc.collect",
-        "comfy.model_management.unload_all_models": "Comfy 模型全部卸载",
-        "comfy.model_management.cleanup_models": "Comfy 模型清理",
-        "comfy.model_management.cleanup_models(True)": "Comfy 模型清理(True)",
-        "comfy.model_management.soft_empty_cache": "Comfy 软清理缓存",
-        "comfy.model_management.empty_cache": "Comfy 清理缓存",
-        "torch.cuda.empty_cache": "torch CUDA 清理缓存",
-        "LM Studio API 无法连接: {endpoint}。请确认 LM Studio 已启动本地服务并监听该地址。原始错误: {error}":
-            "Unable to connect to LM Studio API: {endpoint}. Make sure LM Studio is running locally and listening on that address. Original error: {error}",
-        "请基于以下检索到的上下文回答问题。如果上下文不足，请明确说明。":
-            "Answer the question using the retrieved context below. If the context is insufficient, say so clearly.",
-        "[EasyRAG][显存清理] 运行前清理失败: {errors}":
-            "[EasyRAG][VRAM] Pre-run cleanup failed: {errors}",
-        "[EasyRAG][问答检索] question={question!r} top_k={top_k}":
-            "[EasyRAG][RAG] question={question!r} top_k={top_k}",
-        "[EasyRAG][问答检索] rag_hit={rag_hit} best_score={best_score:.4f}":
-            "[EasyRAG][RAG] rag_hit={rag_hit} best_score={best_score:.4f}",
-        "[EasyRAG][问答检索#{i}] score={score:.4f} source={source} chunk_text={chunk_text}":
-            "[EasyRAG][RAG#{i}] score={score:.4f} source={source} chunk_text={chunk_text}",
-        "[EasyRAG][问答检索] embedding检索后卸载: count={count} ok={ok}":
-            "[EasyRAG][RAG] embedding unloaded after retrieval: count={count} ok={ok}",
-        "[EasyRAG][问答检索] embedding检索后卸载错误: {errors}":
-            "[EasyRAG][RAG] embedding unload errors after retrieval: {errors}",
-        "[EasyRAG][简约检索] question={question!r} top_k=5(default)":
-            "[EasyRAG][Simple RAG] question={question!r} top_k=5(default)",
-        "[EasyRAG][简约检索] rag_hit={rag_hit} best_score={best_score:.4f}":
-            "[EasyRAG][Simple RAG] rag_hit={rag_hit} best_score={best_score:.4f}",
-        "[EasyRAG][简约检索#{i}] score={score:.4f} source={source} chunk_text={chunk_text}":
-            "[EasyRAG][Simple RAG#{i}] score={score:.4f} source={source} chunk_text={chunk_text}",
-        "[EasyRAG][简约检索] embedding检索后卸载: count={count} ok={ok}":
-            "[EasyRAG][Simple RAG] embedding unloaded after retrieval: count={count} ok={ok}",
-        "[EasyRAG][简约检索] embedding检索后卸载错误: {errors}":
-            "[EasyRAG][Simple RAG] embedding unload errors after retrieval: {errors}",
-        "[EasyRAG][简约检索] 未连接 rag_index，跳过检索。":
-            "[EasyRAG][Simple RAG] rag_index is not connected, skipping retrieval.",
-        "[EasyRAG][向量构建] embedding卸载请求: model={model} count={count} ok={ok}":
-            "[EasyRAG][Build] embedding unload requested: model={model} count={count} ok={ok}",
-        "[EasyRAG][向量构建] embedding卸载错误: {errors}":
-            "[EasyRAG][Build] embedding unload errors: {errors}",
-        "[EasyRAG][向量构建] embedding卸载请求: disabled model={model}":
-            "[EasyRAG][Build] embedding unload request: disabled model={model}",
-        "[EasyRAG][显存清理] 运行前清理失败: {errors}":
-            "[EasyRAG][VRAM] Pre-run cleanup failed: {errors}",
-        "[EasyRAG][RAG] 未连接 rag_index，跳过检索。":
-            "[EasyRAG][RAG] rag_index is not connected, skipping retrieval.",
-        "卸载数量: {count}, 卸载状态: {status}": "Unloaded: {count}, status: {status}",
-        "ok": "ok",
-        "warn": "warn",
-        "disable": "disabled",
-        "enabled": "enabled",
-        "Uploaded document": "Uploaded document",
-        "文档上传失败: {error}": "Document upload failed: {error}",
-        "上传文档": "Upload document",
-    },
-    "zh": {
-        "Document Loader": "文档加载",
-        "Vector Store Builder (FAISS)": "向量库构建(FAISS)",
-        "LM Studio API (Advanced)": "LM Studio API (高级)",
-        "LM Studio API (Simple)": "LM Studio API (简约)",
-        "Select a document (txt/json/md/pdf). Use the Upload Document button below to put a file into the input folder first.":
-            "选择文档（txt/json/md/pdf）。可用下方“上传文档”按钮上传到 input 目录后再选择。",
-        "Invalid document: {document}": "无效文档: {document}",
-        "Unsupported document type: {document}": "不支持的文档类型: {document}",
-        "Please select or upload a document in the document field (txt/json/md/pdf).":
-            "请在 document 中选择或上传一个文档（txt/json/md/pdf）。",
-        "Unsupported document type: {suffix}. Only txt/json/md/pdf are supported.":
-            "不支持的文档类型: {suffix}，仅支持 txt/json/md/pdf。",
-        "Document load complete. Total files: {total}, succeeded: {success}, failed: {failed}":
-            "文档加载完成。总文件: {total}, 成功: {success}, 失败: {failed}",
-        "Only local models under ComfyUI/models/embeddings are allowed.":
-            "仅允许使用 ComfyUI/models/embeddings 下的本地模型",
-        "No usable embedding model was found. Please place a sentence-transformers model in ComfyUI/models/embeddings first.":
-            "未检测到可用 embedding 模型。请先把 sentence-transformers 模型放到 ComfyUI/models/embeddings。",
-        "Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}":
-            "向量库构建完成: {index_name}, 文档数: {documents_count}, chunk数: {chunks_count}, 模型: {selected_model}, 目录: {index_dir}",
-        "Model options are fetched from the LM Studio API (default: 127.0.0.1:1234).":
-            "模型选项来自 LM Studio API（默认地址: 127.0.0.1:1234）",
-        "You are a rigorous local RAG assistant. Prefer answering from the provided context.":
-            "你是一个严谨的本地RAG助手，优先根据给定上下文回答。",
-        "Logs on": "日志开",
-        "Logs off": "日志关",
-        "Streaming on": "流式开",
-        "Streaming off": "流式关",
-        "Clear before run": "运行前清理",
-        "Run directly": "直接运行",
-        "Unload model": "卸载模型",
-        "Keep model": "保留模型",
-        "EasyRAG - Document Loader": "EasyRAG - 文档加载",
-        "EasyRAG - Vector Store Builder (FAISS)": "EasyRAG - 向量库构建(FAISS)",
-        "EasyRAG - LM Studio API (Advanced)": "EasyRAG - LM Studio API (高级)",
-        "EasyRAG - LM Studio API (Simple)": "EasyRAG - LM Studio API (简约)",
-        "EasyRAG Language": "EasyRAG 语言",
-        "Follow ComfyUI": "跟随 ComfyUI",
-        "Chinese": "中文",
-        "English": "英文",
-        "documents": "文档",
-        "summary": "摘要",
-        "rag_index": "RAG 索引",
-        "answer": "答案",
-        "context_used": "上下文",
-        "raw_response": "原始响应",
-        "The LM Studio API returned an empty model list.": "LM Studio API 返回空模型列表。",
-        "Query must not be empty.": "query 不能为空。",
-        "Index directory not found: {index_dir}": "索引目录未找到: {index_dir}",
-        "faiss is not installed. Run: pip install -r requirements.txt":
-            "faiss 未安装。请执行: pip install -r requirements.txt",
-        "No documents provided.": "未提供任何文档。",
-        "index_name must not be empty.": "index_name 不能为空。",
-        "No chunks were generated from the documents.": "未能从文档中生成任何分块。",
-        "sentence-transformers is not installed. Run: pip install -r requirements.txt":
-            "sentence-transformers 未安装。请执行: pip install -r requirements.txt",
-        "Unsupported file extension: {suffix}": "不支持的文件扩展名: {suffix}",
-        "gc.collect failed: {error}": "gc.collect failed: {error}",
-        "comfy model_management clear failed: {error}": "comfy model_management clear failed: {error}",
-        "torch cuda clear failed: {error}": "torch cuda clear failed: {error}",
-        "model.cpu failed: {error}": "model.cpu 失败: {error}",
-        "model.to('cpu') failed: {error}": "model.to('cpu') 失败: {error}",
-        "torch cuda cleanup failed": "torch CUDA 清理失败",
-        "gc cleanup failed: {error}": "gc 清理失败: {error}",
-        "gc.collect": "gc.collect",
-        "comfy.model_management.unload_all_models": "Comfy 模型全部卸载",
-        "comfy.model_management.cleanup_models": "Comfy 模型清理",
-        "comfy.model_management.cleanup_models(True)": "Comfy 模型清理(True)",
-        "comfy.model_management.soft_empty_cache": "Comfy 软清理缓存",
-        "comfy.model_management.empty_cache": "Comfy 清理缓存",
-        "torch.cuda.empty_cache": "torch CUDA 清理缓存",
-        "Unable to connect to LM Studio API: {endpoint}. Make sure LM Studio is running locally and listening on that address. Original error: {error}":
-            "无法连接 LM Studio API: {endpoint}。请确认 LM Studio 已启动本地服务并监听该地址。原始错误: {error}",
-        "Answer the question using the retrieved context below. If the context is insufficient, say so clearly.":
-            "请基于以下检索到的上下文回答问题。如果上下文不足，请明确说明。",
-        "[EasyRAG][VRAM] Pre-run cleanup failed: {errors}":
-            "[EasyRAG][显存清理] 运行前清理失败: {errors}",
-        "[EasyRAG][RAG] question={question!r} top_k={top_k}":
-            "[EasyRAG][问答检索] question={question!r} top_k={top_k}",
-        "[EasyRAG][RAG] rag_hit={rag_hit} best_score={best_score:.4f}":
-            "[EasyRAG][问答检索] rag_hit={rag_hit} best_score={best_score:.4f}",
-        "[EasyRAG][RAG#{i}] score={score:.4f} source={source} chunk_text={chunk_text}":
-            "[EasyRAG][问答检索#{i}] score={score:.4f} source={source} chunk_text={chunk_text}",
-        "[EasyRAG][RAG] embedding unloaded after retrieval: count={count} ok={ok}":
-            "[EasyRAG][问答检索] embedding检索后卸载: count={count} ok={ok}",
-        "[EasyRAG][RAG] embedding unload errors after retrieval: {errors}":
-            "[EasyRAG][问答检索] embedding检索后卸载错误: {errors}",
-        "[EasyRAG][Simple RAG] question={question!r} top_k=5(default)":
-            "[EasyRAG][简约检索] question={question!r} top_k=5(default)",
-        "[EasyRAG][Simple RAG] rag_hit={rag_hit} best_score={best_score:.4f}":
-            "[EasyRAG][简约检索] rag_hit={rag_hit} best_score={best_score:.4f}",
-        "[EasyRAG][Simple RAG#{i}] score={score:.4f} source={source} chunk_text={chunk_text}":
-            "[EasyRAG][简约检索#{i}] score={score:.4f} source={source} chunk_text={chunk_text}",
-        "[EasyRAG][Simple RAG] embedding unloaded after retrieval: count={count} ok={ok}":
-            "[EasyRAG][简约检索] embedding检索后卸载: count={count} ok={ok}",
-        "[EasyRAG][Simple RAG] embedding unload errors after retrieval: {errors}":
-            "[EasyRAG][简约检索] embedding检索后卸载错误: {errors}",
-        "[EasyRAG][Simple RAG] rag_index is not connected, skipping retrieval.":
-            "[EasyRAG][简约检索] 未连接 rag_index，跳过检索。",
-        "[EasyRAG][Build] embedding unload requested: model={model} count={count} ok={ok}":
-            "[EasyRAG][向量构建] embedding卸载请求: model={model} count={count} ok={ok}",
-        "[EasyRAG][Build] embedding unload errors: {errors}":
-            "[EasyRAG][向量构建] embedding卸载错误: {errors}",
-        "[EasyRAG][Build] embedding unload request: disabled model={model}":
-            "[EasyRAG][向量构建] embedding卸载请求: disabled model={model}",
-        "[EasyRAG][RAG] rag_index is not connected, skipping retrieval.":
-            "[EasyRAG][RAG] 未连接 rag_index，跳过检索。",
-        "Unloaded: {count}, status: {status}": "卸载数量: {count}, 卸载状态: {status}",
-        "ok": "ok",
-        "warn": "warn",
-        "disabled": "已禁用",
-        "enabled": "已启用",
-        "Uploaded document": "Uploaded document",
-        "Document upload failed: {error}": "文档上传失败: {error}",
-        "Upload document": "上传文档",
-    },
-}
+def _load_translations(lang: str) -> Dict[str, str]:
+    if lang in _TRANSLATIONS:
+        return _TRANSLATIONS[lang]
+    
+    # Check current lang folder for messages.json
+    p = _LOCALES_DIR / lang / "messages.json"
+    if not p.exists():
+        # Fallback for zh-CN -> zh etc
+        if "-" in lang:
+            base = lang.split("-")[0]
+            p = _LOCALES_DIR / base / "messages.json"
+    
+    if not p.exists() and lang != "en":
+        # Final fallback to en
+        p = _LOCALES_DIR / "en" / "messages.json"
+
+    if not (p and p.exists()):
+        return {}
+
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        _TRANSLATIONS[lang] = data
+        return data
+    except Exception:
+        return {}
 
 
 def normalize_language(language: Optional[str]) -> str:
     if not language:
-        return "zh"
+        return "en"
     value = str(language).strip().lower()
-    if value in {"zh", "zh-cn", "zh-hans", "cn", "zn"}:
+    if value in {"zh", "zh-cn", "zh-hans", "cn"}:
         return "zh"
     if value in {"en", "en-us", "en-gb"}:
         return "en"
-    if value == "auto":
-        return detect_language()
-    return "zh"
+    return "en"
 
 
 def _settings_path() -> Path:
+    # Look for comfy.settings.json in standard location
     return Path(__file__).resolve().parents[2] / "user" / "default" / "comfy.settings.json"
 
 
@@ -286,53 +67,39 @@ def _load_settings() -> Dict[str, Any]:
 
 
 def detect_language() -> str:
-    env_lang = os.getenv("EASY_RAG_LANG")
-    if env_lang:
-        return normalize_language(env_lang)
-
+    """Detection based on official ComfyUI settings only."""
     settings = _load_settings()
-    for key in (LANGUAGE_SETTING_ID, "Comfy.Locale"):
-        value = settings.get(key)
-        if value:
-            raw = str(value).strip().lower()
-            if raw in {"zh", "zh-cn", "zh-hans", "cn", "zn"}:
-                return "zh"
-            if raw in {"en", "en-us", "en-gb"}:
-                return "en"
-
-    sys_lang, _ = locale.getlocale()
-    if not sys_lang:
-        sys_lang = locale.getdefaultlocale()[0] if locale.getdefaultlocale() else None
-    resolved = normalize_language(sys_lang)
-    if resolved in {"zh", "en"}:
-        return resolved
-    return "zh"
+    value = settings.get("Comfy.Locale")
+    if value:
+        return normalize_language(str(value))
+    
+    # Fallback to system locale if no setting
+    try:
+        sys_lang, _ = locale.getlocale()
+        if not sys_lang:
+            sys_lang = locale.getdefaultlocale()[0] if locale.getdefaultlocale() else None
+        return normalize_language(sys_lang)
+    except Exception:
+        return "en"
 
 
 def t(text: str, lang: Optional[str] = None, **kwargs: Any) -> str:
+    """Translation function using lazy-loaded JSON maps."""
     current = normalize_language(lang or detect_language())
-    translated = _TRANSLATIONS.get(current, {}).get(text, text)
+    trans_map = _load_translations(current)
+    
+    # If key not found in current map, try English map as a second chance
+    translated = trans_map.get(text)
+    if translated is None and current != "en":
+        en_map = _load_translations("en")
+        translated = en_map.get(text)
+    
+    if translated is None:
+        translated = text
+    
     if kwargs:
         try:
             return translated.format(**kwargs)
         except Exception:
             return translated
     return translated
-
-
-def node_display_names(lang: Optional[str] = None) -> Dict[str, str]:
-    current = normalize_language(lang or detect_language())
-    if current == "zh":
-        return {
-            "EasyRAGDocumentLoader": t("EasyRAG - 文档加载", current),
-            "EasyRAGVectorStoreBuilder": t("EasyRAG - 向量库构建(FAISS)", current),
-            "EasyRAGLMStudioChatAdvanced": t("EasyRAG - LM Studio API (高级)", current),
-            "EasyRAGLMStudioChatSimple": t("EasyRAG - LM Studio API (简约)", current),
-        }
-    return {
-        "EasyRAGDocumentLoader": t("EasyRAG - Document Loader", current),
-        "EasyRAGVectorStoreBuilder": t("EasyRAG - Vector Store Builder (FAISS)", current),
-        "EasyRAGLMStudioChatAdvanced": t("EasyRAG - LM Studio API (Advanced)", current),
-        "EasyRAGLMStudioChatSimple": t("EasyRAG - LM Studio API (Simple)", current),
-    }
-
