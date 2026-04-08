@@ -1,82 +1,134 @@
-# ComfyUI RAG Prompt (Local)
+# Comfyui-Easy-RAG
 
-本插件为 ComfyUI 提供本地 RAG 节点，基于原作者 nregret/Comfyui-Easy-RAG 二次开发，优化了图像反推、显存管理、多模态交互与多语言嵌入模型支持。
+本插件为 ComfyUI 提供本地 RAG 工作流节点，支持文档构建向量库、检索增强问答，以及 LM Studio 本地多模态对话。
 
-功能完整兼容 LM Studio 本地 RAG 工作流，无需联网、零成本构建 AI 绘画提示词知识库。
+## 功能特性
 
-## 优化亮点
-- 修复图像反推 astype 错误，支持图片输入多模态问答
-- 优化显存自动清理，模型可热卸载，不占显存
-- 支持热拔插切换不同向量库
-- 兼容最新多语言嵌入模型（harrier-oss 等）
-- 节点命名重构，更清晰、更易用
-- 保留原项目所有稳定性与兼容性
-
-## 支持功能
-- 文档上传/加载（txt, json, md, pdf）
-- 自动文本切分 + sentence-transformers embedding
-- 使用 FAISS 构建向量数据库
-- 查询执行 top-k 语义检索
-- 自动拼接 context 到 prompt
-- 通过 LM Studio 本地 OpenAI 兼容 API 生成回答
-- 图像反推 + 多模态对话
-- 显存优化、模型热卸载
+- 文档加载与上传（`txt / md / json / pdf`）
+- FAISS 向量库构建与复用
+- RAG 检索 + LM Studio 对话生成
+- 高级节点支持图片输入（多模态）
+- 支持中文向量库名（Windows 路径兼容修复）
+- 预制文档双来源加载：
+  - 插件目录 `rag/`
+  - `ComfyUI/models/RAG/Original corpus/`
+- i18n 多语言支持（`locales/`）
 
 ## 节点列表
-1. RAG Prompt - 文档加载
-2. RAG Prompt - 向量库构建(FAISS)
-3. RAG Prompt - LM Studio API (高级)
-4. RAG Prompt - LM Studio API (简约)
+
+- `EasyRAG - Document Loader`（`RagPromptDocumentLoader`）
+- `Rag 预制文档加载`（`RagPromptPrebuiltLoader`）
+- `EasyRAG - Vector Store Builder (FAISS)`（`RagPromptVectorStoreBuilder`）
+- `EasyRAG - LM Studio API (Advanced)`（`RagPromptLMStudioChatAdvanced`）
+- `EasyRAG - LM Studio API (Simple)`（`RagPromptLMStudioChatSimple`）
+
+## 默认参数（当前版本）
+
+### 向量库构建
+
+- `chunk_size`: `4000`
+- `chunk_overlap`: `0`
+- `unload_embedding_model_after_build`: `true`
+
+### LM Studio API（高级）
+
+- `max_tokens`: `2048`
+- `stream`: `true`
 
 ## 安装
-在当前插件目录安装依赖：
+
+1. 放到 ComfyUI 自定义节点目录：
+
+```bash
+ComfyUI/custom_nodes/Comfyui-Easy-RAG
+```
+
+2. 安装依赖：
 
 ```bash
 pip install -r requirements.txt
-将本目录放入：
-text
-ComfyUI/custom_nodes/ComfyUI-RAG-Prompt
-重启 ComfyUI。
-工作流示例
-方式 A：分步 RAG
-文档加载节点：
-document：选择 input 目录中的文档
-上传文档按钮：直接上传到 ComfyUI/input
-向量库构建节点接收 documents，生成 rag_index
-chunk_size 默认 400
-chunk_overlap 默认 80
-show_retrieval_log 可开启检索日志
-构建后自动卸载模型，大幅节省显存
-LM Studio API (高级) 节点输入 question，连接 rag_index 生成回答
-可连接 image 输入，支持多模态问答
-自动获取 LM Studio 模型列表
-支持 stream 流式输出
-回答后自动卸载模型，释放显存
-LM Studio API (简约) 节点
-极简输入，一键生成答案
-方式 B：一体化问答
-文档加载 → 向量库构建
-将 rag_index 连接到 LM Studio API 节点
-自动检索 → 自动拼接上下文 → 生成回答
-LM Studio 配置
-确保 LM Studio 已启动本地服务：
-text
+```
+
+3. 重启 ComfyUI。
+
+## 使用说明
+
+### 方式 A：标准 RAG 流程
+
+1. `Document Loader` 或 `预制文档加载` 输出 `documents`
+2. `Vector Store Builder` 构建并输出 `rag_index`
+3. 将 `rag_index` 连接到 `LM Studio API (Advanced/Simple)`
+4. 输入 `question`，运行即可
+
+### 方式 B：预制语料快速构建
+
+- 在 `Rag 预制文档加载` 中直接选择文档或目录
+- 数据来源会自动从以下路径合并显示（不显示来源前缀）：
+  - 插件 `rag/`
+  - `ComfyUI/models/RAG/Original corpus/`
+
+## LM Studio 配置
+
+- 本地服务地址默认：
+
+```text
 http://127.0.0.1:1234
-向量模型放置位置
-模型必须放在：
-text
+```
+
+- 确保 LM Studio 已启动并可访问模型列表接口。
+
+## 嵌入模型放置位置
+
+请将本地 embedding 模型放在：
+
+```text
 ComfyUI/models/embeddings/
+```
+
 例如：
-plaintext
+
+```text
 ComfyUI/models/embeddings/harrier-oss-v1-0.6b/
 ComfyUI/models/embeddings/bge-small-zh-v1.5/
-向量库存储位置
-默认保存在：
-text
-data/faiss_indexes/<index_name>/
-包含：
-index.faiss
-chunks.json
-meta.json
-开源声明
-本项目基于 nregret/Comfyui-Easy-RAG 二次开发，感谢原作者的开源贡献。
+```
+
+## 向量库存储位置
+
+默认存储在：
+
+```text
+ComfyUI/models/RAG/VectorDB/<index_name>/
+```
+
+目录内包含：
+
+- `index.faiss`
+- `chunks.json`
+- `meta.json`
+
+## 多语言（i18n）
+
+本项目按 ComfyUI 官方 i18n 结构组织：
+
+```text
+locales/
+  en/
+    main.json
+    nodeDefs.json
+  zh/
+    main.json
+    nodeDefs.json
+```
+
+语言切换跟随 `Comfy.Locale`。
+
+## 依赖
+
+- `faiss-cpu>=1.8.0`
+- `sentence-transformers>=3.0.0`
+- `requests>=2.31.0`
+- `pypdf>=4.0.0`
+
+## 致谢
+
+项目基于原仓库演进：<https://github.com/nregret/Comfyui-Easy-RAG>
