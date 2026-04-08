@@ -27,6 +27,8 @@ import io
 import contextlib
 import logging
 import gc
+import tempfile
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Tuple
@@ -63,6 +65,39 @@ from .i18n import t
 
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".json", ".pdf"}
+
+
+def _faiss_temp_file() -> Path:
+    return Path(tempfile.gettempdir()) / f"easyrag_{uuid.uuid4().hex}.faiss"
+
+
+def _faiss_write_index_safe(index: Any, target_path: Path) -> None:
+    """Write FAISS index through an ASCII temp path for Windows Unicode-path compatibility."""
+    tmp = _faiss_temp_file()
+    try:
+        faiss.write_index(index, str(tmp))
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_bytes(tmp.read_bytes())
+    finally:
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except Exception:
+            pass
+
+
+def _faiss_read_index_safe(source_path: Path) -> Any:
+    """Read FAISS index through an ASCII temp path for Windows Unicode-path compatibility."""
+    tmp = _faiss_temp_file()
+    try:
+        tmp.write_bytes(source_path.read_bytes())
+        return faiss.read_index(str(tmp))
+    finally:
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except Exception:
+            pass
 
 
 def _safe_read_text(path: Path, encoding: str = "utf-8") -> str:
@@ -438,7 +473,7 @@ def build_faiss_index(
     index_dir = root / index_name
     index_dir.mkdir(parents=True, exist_ok=True)
 
-    faiss.write_index(index, str(index_dir / "index.faiss"))
+    _faiss_write_index_safe(index, index_dir / "index.faiss")
     (index_dir / "chunks.json").write_text(json.dumps(chunks, ensure_ascii=False, indent=2), encoding="utf-8")
     (index_dir / "meta.json").write_text(json.dumps({
         "index_name": index_name,
@@ -475,7 +510,7 @@ def load_index(index_name_or_path: str) -> Tuple[Any, List[Dict], Dict]:
     if not index_dir.exists():
         raise FileNotFoundError(f"Index not found: {index_dir}")
 
-    index = faiss.read_index(str(index_dir / "index.faiss"))
+    index = _faiss_read_index_safe(index_dir / "index.faiss")
     chunks = json.loads((index_dir / "chunks.json").read_text(encoding="utf-8"))
     meta = json.loads((index_dir / "meta.json").read_text(encoding="utf-8"))
     return index, chunks, meta

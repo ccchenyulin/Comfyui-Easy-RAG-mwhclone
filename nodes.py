@@ -386,10 +386,10 @@ class LMStudioRAGChatNode:
                     "label": t("system_prompt")
                 }),
                 "temperature": ("FLOAT", {"default": 0.2, "label": t("temperature")}),
-                "max_tokens": ("INT", {"default": 512, "label": t("max_tokens")}),
+                "max_tokens": ("INT", {"default": 2048, "label": t("max_tokens")}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "label": t("seed")}),
                 "top_k": ("INT", {"default": 5, "min": 1, "max": 100, "label": t("top_k")}),
-                "stream": ("BOOLEAN", {"default": False, "label": t("stream")}),
+                "stream": ("BOOLEAN", {"default": True, "label": t("stream")}),
                 "unload_model_after_response": ("BOOLEAN", {"default": True, "label": t("unload_model_after_response")}),
             },
             "optional": {
