@@ -4,4 +4,9 @@ __init__.py
 nodes.py
 rag_core.py
 requirements.txt
-web/easyrag_upload.js
+web/i18n.js
+web/ragprompt_upload.js
+locales/en/main.json
+locales/en/nodeDefs.json
+locales/zh/main.json
+locales/zh/nodeDefs.json

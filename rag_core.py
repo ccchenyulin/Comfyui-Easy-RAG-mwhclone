@@ -59,6 +59,8 @@ try:
 except Exception:
     model_management = None
 
+from .i18n import t
+
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".json", ".pdf"}
 
@@ -328,8 +330,17 @@ def unload_embedding_model(model_name: Optional[str] = None) -> Dict:
     return {"unloaded": unloaded, "count": len(unloaded), "errors": errors, "ok": len(errors) == 0}
 
 
+try:
+    import folder_paths
+except ImportError:
+    folder_paths = None
+
+
 def default_index_root() -> Path:
-    root = Path(__file__).resolve().parent / "data" / "faiss_indexes"
+    if folder_paths and hasattr(folder_paths, "models_dir"):
+        root = Path(folder_paths.models_dir) / "RAG" / "VectorDB"
+    else:
+        root = Path(__file__).resolve().parent / "data" / "faiss_indexes"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -357,9 +368,9 @@ def get_or_create_index(
 
     if index_exists(index_name):
         meta = json.loads((index_dir / "meta.json").read_text(encoding="utf-8"))
-        print(f"✅ 向量库已存在，直接加载（{meta['chunks_count']} chunks）")
-        print(f"   📂 位置: {index_dir}")
-        print(f"   🤖 模型: {meta['embedding_model']}")
+        print(f"✅ {t('Select an existing vector store')} ({meta['chunks_count']} chunks)")
+        print(f"   📂 {t('rag_index')}: {index_dir}")
+        print(f"   🤖 {t('model')}: {meta['embedding_model']}")
         return {
             "index_name": index_name,
             "index_dir": str(index_dir),
@@ -368,7 +379,7 @@ def get_or_create_index(
             "documents_count": meta["documents_count"],
         }
 
-    print("🆘 未找到完整向量库，开始构建...")
+    print(t("🆘 未找到完整向量库，开始构建..."))
     result = build_faiss_index(
         documents=documents,
         embedding_model=embedding_model,
@@ -376,7 +387,7 @@ def get_or_create_index(
         chunk_overlap=chunk_overlap,
         index_name=index_name
     )
-    print(f"✅ 向量库构建完成！")
+    print(t("✅ 向量库构建完成！"))
     # 构建后强制释放模型
     unload_embedding_model(embedding_model)
     return result
@@ -479,6 +490,7 @@ def search_index(
     if not query.strip():
         raise ValueError("query empty")
 
+    top_k = max(1, int(top_k))
     index, chunks, meta = load_index(index_name_or_path)
     embedder = EmbeddingBackend(meta["embedding_model"], device=device)
     qvec = embedder.encode([query])
@@ -727,6 +739,7 @@ def lmstudio_chat(
     system_prompt: str = "You are a helpful assistant.",
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
+    seed: Optional[int] = None,
     api_mode: str = "responses",
     stream: bool = False,
     emit_stream_log: bool = False,
@@ -736,7 +749,7 @@ def lmstudio_chat(
         model = resolve_lmstudio_model(base_url)
     q = question.strip()
     if context.strip():
-        q = f"请根据上下文回答：\n{context.strip()}\n\n问题：{question.strip()}"
+        q = t("请根据上下文回答：\n{context}\n\n问题：{question}", context=context.strip(), question=question.strip())
     mode = api_mode.strip().lower()
     base = base_url.rstrip("/")
     if mode == "responses":
@@ -752,6 +765,8 @@ def lmstudio_chat(
             payload["temperature"] = float(temperature)
         if max_tokens is not None:
             payload["max_output_tokens"] = int(max_tokens)
+        if seed is not None:
+            payload["seed"] = int(seed)
     else:
         ep = base + "/v1/chat/completions"
         msg = [{"role": "system", "content": system_prompt}, {"role": "user", "content": q}]
@@ -765,6 +780,8 @@ def lmstudio_chat(
             payload["temperature"] = float(temperature)
         if max_tokens is not None:
             payload["max_tokens"] = int(max_tokens)
+        if seed is not None:
+            payload["seed"] = int(seed)
     try:
         if stream:
             if mode == "responses":

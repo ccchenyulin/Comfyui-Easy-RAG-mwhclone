@@ -2,42 +2,55 @@ from __future__ import annotations
 
 import json
 import locale
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 
-LANGUAGE_SETTING_ID = "EasyRAG.Language"
-DEFAULT_LANGUAGE = "auto"
-
 _TRANSLATIONS: Dict[str, Dict[str, str]] = {}
-_LOCALES_DIR = Path(__file__).resolve().parent / "locales"
+LOCALE_PATH = Path(__file__).resolve().parent / "locales"
+
+
+def _candidate_files(lang: str) -> list[Path]:
+    candidates = [
+        LOCALE_PATH / lang / "main.json",
+    ]
+    if "-" in lang:
+        base = lang.split("-")[0]
+        candidates.extend(
+            [
+                LOCALE_PATH / base / "main.json",
+            ]
+        )
+    return candidates
+
 
 def _load_translations(lang: str) -> Dict[str, str]:
     if lang in _TRANSLATIONS:
         return _TRANSLATIONS[lang]
-    
-    # Check current lang folder for messages.json
-    p = _LOCALES_DIR / lang / "messages.json"
-    if not p.exists():
-        # Fallback for zh-CN -> zh etc
-        if "-" in lang:
-            base = lang.split("-")[0]
-            p = _LOCALES_DIR / base / "messages.json"
-    
-    if not p.exists() and lang != "en":
-        # Final fallback to en
-        p = _LOCALES_DIR / "en" / "messages.json"
 
-    if not (p and p.exists()):
-        return {}
+    for p in _candidate_files(lang):
+        if not p.exists():
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            _TRANSLATIONS[lang] = data
+            return data
+        except Exception:
+            continue
 
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        _TRANSLATIONS[lang] = data
-        return data
-    except Exception:
-        return {}
+    if lang != "en":
+        for p in _candidate_files("en"):
+            if not p.exists():
+                continue
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                _TRANSLATIONS[lang] = data
+                return data
+            except Exception:
+                continue
+
+    _TRANSLATIONS[lang] = {}
+    return {}
 
 
 def normalize_language(language: Optional[str]) -> str:
@@ -46,13 +59,15 @@ def normalize_language(language: Optional[str]) -> str:
     value = str(language).strip().lower()
     if value in {"zh", "zh-cn", "zh-hans", "cn"}:
         return "zh"
+    if value in {"zh-tw", "zh-hant"}:
+        return "zh-tw"
     if value in {"en", "en-us", "en-gb"}:
         return "en"
     return "en"
 
 
 def _settings_path() -> Path:
-    # Look for comfy.settings.json in standard location
+    # Official default settings location in ComfyUI.
     return Path(__file__).resolve().parents[2] / "user" / "default" / "comfy.settings.json"
 
 
@@ -67,17 +82,17 @@ def _load_settings() -> Dict[str, Any]:
 
 
 def detect_language() -> str:
-    """Detection based on official ComfyUI settings only."""
+    """Follow ComfyUI language setting, then fallback to system locale."""
     settings = _load_settings()
     value = settings.get("Comfy.Locale")
     if value:
         return normalize_language(str(value))
-    
-    # Fallback to system locale if no setting
+
     try:
         sys_lang, _ = locale.getlocale()
         if not sys_lang:
-            sys_lang = locale.getdefaultlocale()[0] if locale.getdefaultlocale() else None
+            default_locale = locale.getdefaultlocale()
+            sys_lang = default_locale[0] if default_locale else None
         return normalize_language(sys_lang)
     except Exception:
         return "en"

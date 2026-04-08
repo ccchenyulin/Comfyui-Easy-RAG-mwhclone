@@ -1,5 +1,6 @@
 import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
+import { t } from "./i18n.js";
 
 // 👇 已改成你节点的真实名称
 const TARGET_NODE_NAMES = new Set([
@@ -41,7 +42,7 @@ app.registerExtension({
       if (hasButton) return r;
 
       const self = this;
-      this.addWidget("button", "upload_document", "上传文档", async () => {
+      this.addWidget("button", "upload_document", t("Upload document"), async () => {
         const picker = document.createElement("input");
         picker.type = "file";
         picker.accept = ".txt,.json,.md,.pdf";
@@ -83,7 +84,7 @@ app.registerExtension({
             }
           } catch (err) {
             console.error("[RagPrompt] 文档上传失败:", err);
-            alert(`文档上传失败: ${err?.message || err}`);
+            alert(t("Document upload failed: {error}", { error: err?.message || err }));
           } finally {
             picker.remove();
           }

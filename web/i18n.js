@@ -2,13 +2,18 @@ import { app } from "/scripts/app.js";
 
 const TRANSLATIONS = {
   en: {
-    "上传文档": "Upload document",
-    "文档上传失败: {error}": "Document upload failed: {error}",
+    "Upload document": "Upload document",
+    "Document upload failed: {error}": "Document upload failed: {error}",
     "Uploaded document": "Uploaded document",
   },
   zh: {
-    "上传文档": "上传文档",
-    "文档上传失败: {error}": "文档上传失败: {error}",
+    "Upload document": "上传文件夹",
+    "Document upload failed: {error}": "文档上传失败: {error}",
+    "Uploaded document": "已上传文档",
+  },
+  "zh-tw": {
+    "Upload document": "上傳資料夾",
+    "Document upload failed: {error}": "文件上傳失敗: {error}",
     "Uploaded document": "已上传文档",
   },
 };
@@ -20,10 +25,14 @@ function getLanguage() {
   const comfyLocale = app.ui.settings.getSettingValue("Comfy.Locale");
   if (comfyLocale) {
     const raw = String(comfyLocale).toLowerCase();
+    if (raw.includes("zh-tw") || raw.includes("zh-hant")) return "zh-tw";
     if (raw.includes("zh") || raw.includes("cn")) return "zh";
     if (raw.includes("en")) return "en";
   }
-  return "zh"; // Default to zh based on the user's preference
+  const browserLocale = String(globalThis?.navigator?.language || "").toLowerCase();
+  if (browserLocale.includes("zh-tw") || browserLocale.includes("zh-hant")) return "zh-tw";
+  if (browserLocale.includes("zh")) return "zh";
+  return "en";
 }
 
 /**

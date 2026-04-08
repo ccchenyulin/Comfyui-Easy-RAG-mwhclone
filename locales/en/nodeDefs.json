@@ -1,263 +1,84 @@
 {
-  "EasyRAGDocumentLoader": {
+  "RagPromptDocumentLoader": {
     "display_name": "EasyRAG - Document Loader",
-    "description": "Load a document or folder from the ComfyUI input directory for RAG. Folders automatically load all supported documents inside.",
+    "description": "Load a document from ComfyUI input directory for RAG.",
     "outputs": {
-      "0": {
-        "name": "Documents"
-      },
-      "1": {
-        "name": "Summary"
-      }
+      "0": { "name": "documents" },
+      "1": { "name": "summary" }
     },
     "inputs": {
-      "document": {
-        "name": "Document"
-      }
+      "document": { "name": "document" }
     }
   },
-  "EasyRAGVectorStoreBuilder": {
+  "RagPromptVectorStoreBuilder": {
     "display_name": "EasyRAG - Vector Store Builder (FAISS)",
-    "description": "Build a FAISS vector index from loaded documents.",
+    "description": "Build FAISS vector index from loaded documents.",
     "inputs": {
-      "documents": {
-        "name": "Documents"
-      },
-      "index_name": {
-        "name": "Index Name"
-      },
-      "embedding_model": {
-        "name": "Embedding Model"
-      },
-      "chunk_size": {
-        "name": "Chunk Size"
-      },
-      "chunk_overlap": {
-        "name": "Chunk Overlap"
-      },
-      "show_retrieval_log": {
-        "name": "Show Retrieval Log"
-      }
+      "documents": { "name": "documents" },
+      "index_list": { "name": "index_list" },
+      "index_name": { "name": "Create Vector Store Name" },
+      "embedding_model": { "name": "embedding_model" },
+      "chunk_size": { "name": "chunk_size" },
+      "chunk_overlap": { "name": "chunk_overlap" },
+      "show_retrieval_log": { "name": "show_retrieval_log" },
+      "unload_embedding_model_after_build": { "name": "unload_embedding_model_after_build" }
     },
     "outputs": {
-      "0": {
-        "name": "RAG Index"
-      },
-      "1": {
-        "name": "Summary"
-      }
+      "0": { "name": "rag_index" },
+      "1": { "name": "summary" }
     }
   },
-  "EasyRAGLMStudioChatAdvanced": {
+  "RagPromptLMStudioChatAdvanced": {
     "display_name": "EasyRAG - LM Studio API (Advanced)",
-    "description": "Ask with optional RAG retrieval and image context.",
+    "description": "Chat node with optional RAG retrieval and image input.",
     "inputs": {
-      "question": {
-        "name": "Question"
-      },
-      "base_url": {
-        "name": "Base URL"
-      },
-      "model": {
-        "name": "Model"
-      },
-      "system_prompt": {
-        "name": "System Prompt"
-      },
-      "temperature": {
-        "name": "Temperature"
-      },
-      "max_tokens": {
-        "name": "Max Tokens"
-      },
-      "top_k": {
-        "name": "Top K"
-      },
-      "stream": {
-        "name": "Stream"
-      },
-      "clear_vram_before_run": {
-        "name": "Clear VRAM Before Run"
-      },
-      "unload_model_after_response": {
-        "name": "Unload Model After Response"
-      },
-      "rag_index": {
-        "name": "RAG Index"
-      },
-      "image": {
-        "name": "Image"
-      },
-      "seed": {
-        "name": "Seed"
-      }
+      "question": { "name": "question" },
+      "base_url": { "name": "base_url" },
+      "model": { "name": "model" },
+      "system_prompt": { "name": "system_prompt" },
+      "temperature": { "name": "temperature" },
+      "max_tokens": { "name": "max_tokens" },
+      "top_k": { "name": "top_k" },
+      "stream": { "name": "stream" },
+      "clear_vram_before_run": { "name": "clear_vram_before_run" },
+      "unload_model_after_response": { "name": "unload_model_after_response" },
+      "rag_index": { "name": "rag_index" },
+      "image": { "name": "image" },
+      "seed": { "name": "seed" }
     },
     "outputs": {
-      "0": {
-        "name": "Answer"
-      },
-      "1": {
-        "name": "Context"
-      },
-      "2": {
-        "name": "Raw Response"
-      }
+      "0": { "name": "answer" },
+      "1": { "name": "context_used" },
+      "2": { "name": "raw_response" }
     }
   },
-  "EasyRAGLMStudioChatSimple": {
+  "RagPromptLMStudioChatSimple": {
     "display_name": "EasyRAG - LM Studio API (Simple)",
-    "description": "Ask with minimal controls and optional RAG retrieval.",
+    "description": "Simplified chat node with optional RAG retrieval.",
     "inputs": {
-      "question": {
-        "name": "Question"
-      },
-      "base_url": {
-        "name": "Base URL"
-      },
-      "model": {
-        "name": "Model"
-      },
-      "system_prompt": {
-        "name": "System Prompt"
-      },
-      "clear_vram_before_run": {
-        "name": "Clear VRAM Before Run"
-      },
-      "unload_model_after_response": {
-        "name": "Unload Model After Response"
-      },
-      "rag_index": {
-        "name": "RAG Index"
-      },
-      "image": {
-        "name": "Image"
-      },
-      "seed": {
-        "name": "Seed"
-      }
+      "question": { "name": "question" },
+      "base_url": { "name": "base_url" },
+      "model": { "name": "model" },
+      "system_prompt": { "name": "system_prompt" },
+      "clear_vram_before_run": { "name": "clear_vram_before_run" },
+      "unload_model_after_response": { "name": "unload_model_after_response" },
+      "rag_index": { "name": "rag_index" },
+      "image": { "name": "image" },
+      "seed": { "name": "seed" }
     },
     "outputs": {
-      "0": {
-        "name": "Answer"
-      }
+      "0": { "name": "answer" }
     }
   },
-  "EasyRAGTwoStageRAG": {
-    "display_name": "EasyRAG - Two-Stage RAG",
-    "description": "Two-stage RAG with independent stage prompts and retrieval instructions. Users fill Stage 1/Stage 2 prompts directly in the node.",
+  "RagPromptPrebuiltLoader": {
+    "display_name": "Rag Prebuilt Loader",
+    "description": "Select prebuilt datasets from local rag folder and ComfyUI/models/RAG/Original corpus.",
     "inputs": {
-      "question": {
-        "name": "Question"
-      },
-      "base_url": {
-        "name": "Base URL"
-      },
-      "model": {
-        "name": "Model"
-      },
-      "stage1_system_prompt": {
-        "name": "Stage 1 System Prompt"
-      },
-      "stage2_system_prompt": {
-        "name": "Stage 2 System Prompt"
-      },
-
-      "temperature": {
-        "name": "Temperature"
-      },
-      "max_tokens": {
-        "name": "Max Tokens"
-      },
-      "top_k_stage1": {
-        "name": "Stage 1 Top K"
-      },
-      "top_k_stage2": {
-        "name": "Stage 2 Top K"
-      },
-      "stream": {
-        "name": "Stream"
-      },
-      "clear_vram_before_run": {
-        "name": "Clear VRAM Before Run"
-      },
-      "unload_model_after_response": {
-        "name": "Unload Model After Response"
-      },
-      "show_retrieval_log": {
-        "name": "Show Retrieval Log"
-      },
-      "rag_index": {
-        "name": "RAG Index"
-      },
-      "image": {
-        "name": "Image"
-      },
-      "seed": {
-        "name": "Seed"
-      }
+      "document": { "name": "document" }
     },
     "outputs": {
-      "0": {
-        "name": "Answer"
-      },
-      "1": {
-        "name": "Retrieval Debug"
-      }
-    }
-  },
-  "EasyRAGPrebuiltLibrary": {
-    "display_name": "EasyRAG - Prebuilt Library",
-    "description": "Select a prebuilt knowledge base from the local rag folder for RAG construction.",
-    "inputs": {
-      "library_name": {
-        "name": "Library Name"
-      }
-    },
-    "outputs": {
-      "0": {
-        "name": "Documents"
-      },
-      "1": {
-        "name": "Summary"
-      }
-    }
-  },
-  "EasyRAGRetriever": {
-    "display_name": "EasyRAG - Vector Library Retriever",
-    "description": "Specialized vector library search node with optional LLM query rewriting.",
-    "inputs": {
-      "question": {
-        "name": "Question"
-      },
-      "rag_index": {
-        "name": "RAG Index"
-      },
-      "top_k": {
-        "name": "Retrieve Quantity"
-      },
-      "rewrite_query": {
-        "name": "Enable Query Rewrite"
-      },
-      "base_url": {
-        "name": "Base URL"
-      },
-      "model": {
-        "name": "Model"
-      },
-      "system_prompt": {
-        "name": "Rewrite System Prompt"
-      },
-      "unload_model_after_response": {
-        "name": "Unload Model After Response"
-      }
-    },
-    "outputs": {
-      "0": {
-        "name": "Context"
-      },
-      "1": {
-        "name": "Hit Count"
-      }
+      "0": { "name": "documents" },
+      "1": { "name": "summary" }
     }
   }
 }

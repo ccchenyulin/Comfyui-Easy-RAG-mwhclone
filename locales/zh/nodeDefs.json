@@ -1,263 +1,84 @@
 {
-  "EasyRAGDocumentLoader": {
-    "display_name": "EasyRAG - 文档加载",
+  "RagPromptDocumentLoader": {
+    "display_name": "Rag 文档加载",
     "description": "从 ComfyUI input 目录加载一个文档用于 RAG。",
     "outputs": {
-      "0": {
-        "name": "文档"
-      },
-      "1": {
-        "name": "摘要"
-      }
+      "0": { "name": "文档" },
+      "1": { "name": "摘要" }
     },
     "inputs": {
-      "document": {
-        "name": "文档"
-      }
+      "document": { "name": "文档" }
     }
   },
-  "EasyRAGVectorStoreBuilder": {
-    "display_name": "EasyRAG - 向量库构建(FAISS)",
+  "RagPromptVectorStoreBuilder": {
+    "display_name": "Rag 向量库构建",
     "description": "根据已加载文档构建 FAISS 向量索引。",
     "inputs": {
-      "documents": {
-        "name": "文档"
-      },
-      "index_name": {
-        "name": "索引名"
-      },
-      "embedding_model": {
-        "name": "向量模型"
-      },
-      "chunk_size": {
-        "name": "分块大小"
-      },
-      "chunk_overlap": {
-        "name": "分块重叠"
-      },
-      "show_retrieval_log": {
-        "name": "显示检索日志"
-      }
+      "documents": { "name": "文档" },
+      "index_list": { "name": "已有向量库" },
+      "index_name": { "name": "创建向量库名" },
+      "embedding_model": { "name": "向量模型" },
+      "chunk_size": { "name": "分块大小" },
+      "chunk_overlap": { "name": "分块重叠" },
+      "show_retrieval_log": { "name": "显示检索日志" },
+      "unload_embedding_model_after_build": { "name": "构建后卸载模型" }
     },
     "outputs": {
-      "0": {
-        "name": "RAG 索引"
-      },
-      "1": {
-        "name": "摘要"
-      }
+      "0": { "name": "RAG 索引" },
+      "1": { "name": "摘要" }
     }
   },
-  "EasyRAGLMStudioChatAdvanced": {
-    "display_name": "EasyRAG - LM Studio API (高级)",
+  "RagPromptLMStudioChatAdvanced": {
+    "display_name": "Rag LM Studio API 高级",
     "description": "支持可选 RAG 检索与图像输入的问答节点。",
     "inputs": {
-      "question": {
-        "name": "问题"
-      },
-      "base_url": {
-        "name": "服务地址"
-      },
-      "model": {
-        "name": "模型"
-      },
-      "system_prompt": {
-        "name": "系统提示词"
-      },
-      "temperature": {
-        "name": "温度"
-      },
-      "max_tokens": {
-        "name": "最大输出词数"
-      },
-      "top_k": {
-        "name": "Top K"
-      },
-      "stream": {
-        "name": "流式输出"
-      },
-      "clear_vram_before_run": {
-        "name": "运行前清理显存"
-      },
-      "unload_model_after_response": {
-        "name": "回答后卸载模型"
-      },
-      "rag_index": {
-        "name": "RAG 索引"
-      },
-      "image": {
-        "name": "图像"
-      },
-      "seed": {
-        "name": "种子"
-      }
+      "question": { "name": "问题" },
+      "base_url": { "name": "服务地址" },
+      "model": { "name": "模型" },
+      "system_prompt": { "name": "系统提示词" },
+      "temperature": { "name": "温度" },
+      "max_tokens": { "name": "最大输出词数" },
+      "top_k": { "name": "Top K" },
+      "stream": { "name": "流式输出" },
+      "clear_vram_before_run": { "name": "运行前清理显存" },
+      "unload_model_after_response": { "name": "回答后卸载模型" },
+      "rag_index": { "name": "RAG 索引" },
+      "image": { "name": "图像" },
+      "seed": { "name": "种子" }
     },
     "outputs": {
-      "0": {
-        "name": "答案"
-      },
-      "1": {
-        "name": "上下文"
-      },
-      "2": {
-        "name": "原始响应"
-      }
+      "0": { "name": "答案" },
+      "1": { "name": "上下文" },
+      "2": { "name": "原始响应" }
     }
   },
-  "EasyRAGLMStudioChatSimple": {
-    "display_name": "EasyRAG - LM Studio API (简约)",
+  "RagPromptLMStudioChatSimple": {
+    "display_name": "Rag LM Studio API 简约",
     "description": "精简参数的问答节点，支持可选 RAG 检索。",
     "inputs": {
-      "question": {
-        "name": "问题"
-      },
-      "base_url": {
-        "name": "服务地址"
-      },
-      "model": {
-        "name": "模型"
-      },
-      "system_prompt": {
-        "name": "系统提示词"
-      },
-      "clear_vram_before_run": {
-        "name": "运行前清理显存"
-      },
-      "unload_model_after_response": {
-        "name": "回答后卸载模型"
-      },
-      "rag_index": {
-        "name": "RAG 索引"
-      },
-      "image": {
-        "name": "图像"
-      },
-      "seed": {
-        "name": "种子"
-      }
+      "question": { "name": "问题" },
+      "base_url": { "name": "服务地址" },
+      "model": { "name": "模型" },
+      "system_prompt": { "name": "系统提示词" },
+      "clear_vram_before_run": { "name": "运行前清理显存" },
+      "unload_model_after_response": { "name": "回答后卸载模型" },
+      "rag_index": { "name": "RAG 索引" },
+      "image": { "name": "图像" },
+      "seed": { "name": "种子" }
     },
     "outputs": {
-      "0": {
-        "name": "答案"
-      }
+      "0": { "name": "答案" }
     }
   },
-  "EasyRAGTwoStageRAG": {
-    "display_name": "EasyRag-Zimage-2步检索推理",
-    "description": "两阶段 RAG：第一阶段与第二阶段使用独立提示词和独立检索指令，均由用户在节点中填写。",
+  "RagPromptPrebuiltLoader": {
+    "display_name": "Rag 预制文档加载",
+    "description": "从本地 rag 文件夹和 ComfyUI/models/RAG/Original corpus 中选择预制数据集用于构建 RAG。",
     "inputs": {
-      "question": {
-        "name": "问题"
-      },
-      "base_url": {
-        "name": "服务地址"
-      },
-      "model": {
-        "name": "模型"
-      },
-      "stage1_system_prompt": {
-        "name": "第一阶段系统提示词"
-      },
-      "stage2_system_prompt": {
-        "name": "第二阶段系统提示词"
-      },
-
-      "temperature": {
-        "name": "温度"
-      },
-      "max_tokens": {
-        "name": "最大输出词数"
-      },
-      "top_k_stage1": {
-        "name": "第一阶段 Top K"
-      },
-      "top_k_stage2": {
-        "name": "第二阶段 Top K"
-      },
-      "stream": {
-        "name": "流式输出"
-      },
-      "clear_vram_before_run": {
-        "name": "运行前清理显存"
-      },
-      "unload_model_after_response": {
-        "name": "回答后卸载模型"
-      },
-      "show_retrieval_log": {
-        "name": "显示检索日志"
-      },
-      "rag_index": {
-        "name": "RAG 索引"
-      },
-      "image": {
-        "name": "图像"
-      },
-      "seed": {
-        "name": "种子"
-      }
+      "document": { "name": "文档" }
     },
     "outputs": {
-      "0": {
-        "name": "答案"
-      },
-      "1": {
-        "name": "检索调试"
-      }
-    }
-  },
-  "EasyRAGPrebuiltLibrary": {
-    "display_name": "EasyRAG-预制库",
-    "description": "从本地 rag 文件夹中选择预制的数据集库用于构建 RAG（例如 z-image）。",
-    "inputs": {
-      "library_name": {
-        "name": "预制库名称"
-      }
-    },
-    "outputs": {
-      "0": {
-        "name": "文档"
-      },
-      "1": {
-        "name": "摘要"
-      }
-    }
-  },
-  "EasyRAGRetriever": {
-    "display_name": "EasyRAG - 向量库检索(专用)",
-    "description": "专用的向量库检索节点，支持通过 LLM 进行可选的查询重写（Query Rewrite）。",
-    "inputs": {
-      "question": {
-        "name": "问题"
-      },
-      "rag_index": {
-        "name": "RAG 索引"
-      },
-      "top_k": {
-        "name": "检索数量"
-      },
-      "rewrite_query": {
-        "name": "开启查询重写"
-      },
-      "base_url": {
-        "name": "服务地址"
-      },
-      "model": {
-        "name": "模型"
-      },
-      "system_prompt": {
-        "name": "查询重写提示词"
-      },
-      "unload_model_after_response": {
-        "name": "回答后卸载模型"
-      }
-    },
-    "outputs": {
-      "0": {
-        "name": "检索内容"
-      },
-      "1": {
-        "name": "命中的数量"
-      }
+      "0": { "name": "文档" },
+      "1": { "name": "摘要" }
     }
   }
 }

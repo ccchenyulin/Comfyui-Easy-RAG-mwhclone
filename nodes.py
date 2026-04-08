@@ -23,9 +23,13 @@ from .rag_core import (
     unload_embedding_model,
     unload_lmstudio_model,
 )
+from .i18n import t
 
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".json", ".pdf"}
+
+PREBUILT_SOURCE_PLUGIN = "plugin"
+PREBUILT_SOURCE_ORIGINAL = "original"
 
 # ====================== 【1】加在最上方：原作者核心显存清理函数 ======================
 def _clear_vram_before_run(enabled: bool):
@@ -59,6 +63,89 @@ def _list_input_docs_for_combo() -> List[str]:
     docs = [f for f in files if _is_supported_doc_file(f)]
     docs = sorted(docs)
     return docs if docs else [""]
+
+
+def _list_prebuilt_docs_for_combo() -> List[str]:
+    try:
+        source_roots = _get_prebuilt_source_roots()
+        items: List[str] = []
+        seen = set()
+        for source, root in source_roots.items():
+            if not root.exists():
+                continue
+            for item in root.iterdir():
+                name = item.name + "/" if item.is_dir() else item.name
+                if item.is_file() and not _is_supported_doc_file(str(item)):
+                    continue
+                if name in seen:
+                    continue
+                seen.add(name)
+                if item.is_dir():
+                    items.append(name)
+                else:
+                    items.append(name)
+        return sorted(items) if items else [""]
+    except:
+        return [""]
+
+
+def _get_prebuilt_source_roots() -> Dict[str, Path]:
+    plugin_rag_root = Path(__file__).resolve().parent / "rag"
+    plugin_rag_root.mkdir(parents=True, exist_ok=True)
+
+    models_dir = getattr(folder_paths, "models_dir", None)
+    if models_dir:
+        comfy_models_root = Path(models_dir)
+    else:
+        comfy_models_root = Path(__file__).resolve().parents[2] / "models"
+
+    original_corpus_root = comfy_models_root / "RAG" / "Original corpus"
+    return {
+        PREBUILT_SOURCE_PLUGIN: plugin_rag_root,
+        PREBUILT_SOURCE_ORIGINAL: original_corpus_root,
+    }
+
+
+def _resolve_prebuilt_target(document: str) -> Path:
+    raw = (document or "").strip()
+    if not raw:
+        raise ValueError(t("Please select a prebuilt document source."))
+
+    source_roots = _get_prebuilt_source_roots()
+    candidates: List[Path] = []
+    relative = raw
+
+    # Backward compatibility: support values like "plugin:xxx" and "original:xxx".
+    if ":" in raw:
+        maybe_source, maybe_relative = raw.split(":", 1)
+        if maybe_source in source_roots:
+            relative = maybe_relative
+            root = source_roots[maybe_source]
+            candidates = [root]
+
+    # Default resolution order: plugin rag first, then models/RAG/Original corpus.
+    if not candidates:
+        candidates = [source_roots[PREBUILT_SOURCE_PLUGIN], source_roots[PREBUILT_SOURCE_ORIGINAL]]
+
+    relative = relative.lstrip("/\\")
+    normalized = relative.rstrip("/\\")
+    for root in candidates:
+        if not root.exists():
+            continue
+        target = (root / normalized).resolve()
+        root_resolved = root.resolve()
+        if root_resolved not in target.parents and target != root_resolved:
+            continue
+        if target.exists():
+            return target
+
+    # If both roots are missing, give an explicit source-folder hint.
+    if not source_roots[PREBUILT_SOURCE_PLUGIN].exists() and not source_roots[PREBUILT_SOURCE_ORIGINAL].exists():
+        raise FileNotFoundError(
+            t("Prebuilt source folder not found: {folder}", folder=str(source_roots[PREBUILT_SOURCE_ORIGINAL]))
+        )
+
+    raise FileNotFoundError(t("Invalid prebuilt path: {path}", path=raw))
 
 
 def _list_existing_indexes() -> List[str]:
@@ -125,13 +212,13 @@ class DocumentLoaderNode:
             "required": {
                 "document": (
                     _list_input_docs_for_combo(),
-                    {"tooltip": "选择txt/json/md/pdf文档"}
+                    {"tooltip": t("Select a document (txt/json/md/pdf). Use the Upload Document button below to put a file into the input folder first."), "label": t("document")}
                 ),
             }
         }
 
     RETURN_TYPES = ("RAG_DOCUMENTS", "STRING")
-    RETURN_NAMES = ("documents", "summary")
+    RETURN_NAMES = (t("documents"), t("summary"))
     FUNCTION = "load_documents"
     CATEGORY = "RagPrompt"
 
@@ -149,7 +236,7 @@ class DocumentLoaderNode:
         _clear_vram_before_run(True)
         
         if not document:
-            return ([], "请选择文档")
+            return ([], t("Please select or upload a document in the document field (txt/json/md/pdf)."))
         file_path = Path(folder_paths.get_annotated_filepath(document)).resolve()
         documents = []
         errors = []
@@ -159,7 +246,7 @@ class DocumentLoaderNode:
                 documents.append(doc)
         except Exception as e:
             errors.append(str(e))
-        summary = f"加载完成：{len(documents)} 个文档" if not errors else f"错误：{errors[0]}"
+        summary = t("Document load complete. Total files: {total}, succeeded: {success}, failed: {failed}", total=len(documents), success=len(documents), failed=len(errors))
         
         # 末尾清理（保留）
         gc.collect()
@@ -179,28 +266,31 @@ class VectorStoreBuilderNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "documents": ("RAG_DOCUMENTS",),
+                "documents": ("RAG_DOCUMENTS", {"label": t("documents")}),
                 "index_list": (_list_existing_indexes(), {
                     "default": "default_index",
-                    "tooltip": "选择已存在的向量库"
+                    "tooltip": t("Select an existing vector store"),
+                    "label": t("index_list")
                 }),
                 "index_name": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "留空=使用上方选择；输入名称=新建库"
+                    "tooltip": t("Leave empty to use selection above; enter a name to create a new index"),
+                    "label": t("index_name")
                 }),
                 "embedding_model": (_list_local_embedding_models(), {
-                    "tooltip": "选择本地embedding模型"
+                    "tooltip": t("Select a local embedding model"),
+                    "label": t("embedding_model")
                 }),
-                "chunk_size": ("INT", {"default": 400, "min": 100, "max": 4000, "step": 10}),
-                "chunk_overlap": ("INT", {"default": 80, "min": 0, "max": 2000, "step": 10}),
-                "show_retrieval_log": ("BOOLEAN", {"default": True}),
-                "unload_embedding_model_after_build": ("BOOLEAN", {"default": True}),
+                "chunk_size": ("INT", {"default": 4000, "min": 100, "max": 4000, "step": 10, "label": t("chunk_size")}),
+                "chunk_overlap": ("INT", {"default": 0, "min": 0, "max": 2000, "step": 10, "label": t("chunk_overlap")}),
+                "show_retrieval_log": ("BOOLEAN", {"default": True, "label": t("show_retrieval_log")}),
+                "unload_embedding_model_after_build": ("BOOLEAN", {"default": True, "label": t("unload_embedding_model_after_build")}),
             }
         }
 
     RETURN_TYPES = ("RAG_INDEX", "STRING")
-    RETURN_NAMES = ("rag_index", "summary")
+    RETURN_NAMES = (t("rag_index"), t("summary"))
     FUNCTION = "build_vector_store"
     CATEGORY = "RagPrompt"
 
@@ -242,7 +332,12 @@ class VectorStoreBuilderNode:
                 "embedding_model": selected_model,
                 "show_retrieval_log": show_retrieval_log
             }
-            summary = f"✅ 库已存在，跳过构建：{final_name}"
+            try:
+                meta = json.loads((index_dir / "meta.json").read_text("utf-8"))
+                cnt_docs = meta.get("documents_count", 0)
+            except:
+                cnt_docs = 0
+            summary = t("Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}", index_name=final_name, documents_count=cnt_docs, chunks_count=cnt, selected_model=selected_model, index_dir=str(index_dir))
             print(f"✅ [RAG日志] 向量库已存在，跳过构建 | 块数: {cnt}")
         else:
             info = build_faiss_index(
@@ -253,7 +348,7 @@ class VectorStoreBuilderNode:
                 index_name=final_name
             )
             cnt = info.get("chunks_count", 0)
-            summary = f"✅ 构建完成：{info['index_name']}"
+            summary = t("Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}", index_name=info["index_name"], documents_count=info["documents_count"], chunks_count=info["chunks_count"], selected_model=selected_model, index_dir=info["index_dir"])
             print(f"🆕 [RAG日志] 新建向量库成功 | 块数: {cnt}")
 
         if unload_embedding_model_after_build:
@@ -282,25 +377,33 @@ class LMStudioRAGChatNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "question": ("STRING", {"multiline": True}),
-                "base_url": ("STRING", {"default": "http://127.0.0.1:1234"}),
-                "model": (_list_lmstudio_models_for_ui(),),
-                "system_prompt": ("STRING", {"multiline": True}),
-                "temperature": ("FLOAT", {"default": 0.2}),
-                "max_tokens": ("INT", {"default": 512}),
-                "top_k": ("INT", {"default": 5}),
-                "stream": ("BOOLEAN", {"default": False}),
-                "unload_model_after_response": ("BOOLEAN", {"default": True}),
+                "question": ("STRING", {"multiline": True, "label": t("question")}),
+                "base_url": ("STRING", {"default": "http://127.0.0.1:1234", "label": t("base_url")}),
+                "model": (_list_lmstudio_models_for_ui(), {"label": t("model")}),
+                "system_prompt": ("STRING", {
+                    "multiline": True,
+                    "default": t("You are a rigorous local RAG assistant. Prefer answering from the provided context."),
+                    "label": t("system_prompt")
+                }),
+                "temperature": ("FLOAT", {"default": 0.2, "label": t("temperature")}),
+                "max_tokens": ("INT", {"default": 512, "label": t("max_tokens")}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "label": t("seed")}),
+                "top_k": ("INT", {"default": 5, "min": 1, "max": 100, "label": t("top_k")}),
+                "stream": ("BOOLEAN", {"default": False, "label": t("stream")}),
+                "unload_model_after_response": ("BOOLEAN", {"default": True, "label": t("unload_model_after_response")}),
             },
-            "optional": {"rag_index": ("RAG_INDEX",), "image": ("IMAGE",)},
+            "optional": {
+                "rag_index": ("RAG_INDEX", {"label": t("rag_index")}),
+                "image": ("IMAGE", {"label": t("image")})
+            },
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING")
-    RETURN_NAMES = ("answer", "context_used", "raw_response")
+    RETURN_NAMES = (t("answer"), t("context_used"), t("raw_response"))
     FUNCTION = "chat_with_rag"
     CATEGORY = "RagPrompt"
 
-    def chat_with_rag(self, question, base_url, model, system_prompt, temperature, max_tokens, top_k, stream, unload_model_after_response, rag_index=None, image=None):
+    def chat_with_rag(self, question, base_url, model, system_prompt, temperature, max_tokens, seed, top_k, stream, unload_model_after_response, rag_index=None, image=None):
         # 【2】每个节点第一行：清显存
         _clear_vram_before_run(True)
         
@@ -331,7 +434,8 @@ class LMStudioRAGChatNode:
         resp = lmstudio_chat(
             base_url=base, model=chosen,
             question=question, context=ctx, image_data_url=img,
-            system_prompt=system_prompt, temperature=temperature, max_tokens=max_tokens, stream=stream
+            system_prompt=system_prompt, temperature=temperature, max_tokens=max_tokens,
+            seed=seed, stream=stream
         )
 
         _LAST_MODEL_BY_BASE_URL[base] = chosen
@@ -361,21 +465,29 @@ class LMStudioRAGChatSimpleNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "question": ("STRING", {"multiline": True}),
-                "base_url": ("STRING", {"default": "http://127.0.0.1:1234"}),
-                "model": (_list_lmstudio_models_for_ui(),),
-                "system_prompt": ("STRING", {"multiline": True}),
-                "unload_model_after_response": ("BOOLEAN", {"default": True}),
+                "question": ("STRING", {"multiline": True, "label": t("question")}),
+                "base_url": ("STRING", {"default": "http://127.0.0.1:1234", "label": t("base_url")}),
+                "model": (_list_lmstudio_models_for_ui(), {"label": t("model")}),
+                "system_prompt": ("STRING", {
+                    "multiline": True,
+                    "default": t("You are a rigorous local RAG assistant. Prefer answering from the provided context."),
+                    "label": t("system_prompt")
+                }),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "label": t("seed")}),
+                "unload_model_after_response": ("BOOLEAN", {"default": True, "label": t("unload_model_after_response")}),
             },
-            "optional": {"rag_index": ("RAG_INDEX",), "image": ("IMAGE",)},
+            "optional": {
+                "rag_index": ("RAG_INDEX", {"label": t("rag_index")}),
+                "image": ("IMAGE", {"label": t("image")})
+            },
         }
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("answer")
+    RETURN_NAMES = (t("answer"),)
     FUNCTION = "chat_simple"
     CATEGORY = "RagPrompt"
 
-    def chat_simple(self, question, base_url, model, system_prompt, unload_model_after_response, rag_index=None, image=None):
+    def chat_simple(self, question, base_url, model, system_prompt, seed, unload_model_after_response, rag_index=None, image=None):
         # 【2】每个节点第一行：清显存
         _clear_vram_before_run(True)
         
@@ -403,7 +515,7 @@ class LMStudioRAGChatSimpleNode:
         resp = lmstudio_chat(
             base_url=base, model=chosen,
             question=question, context=ctx, image_data_url=_image_tensor_to_data_url(image),
-            system_prompt=system_prompt, stream=True
+            system_prompt=system_prompt, seed=seed, stream=True
         )
 
         _LAST_MODEL_BY_BASE_URL[base] = chosen
@@ -425,18 +537,80 @@ class LMStudioRAGChatSimpleNode:
 
 
 # ==============================================
+# 预制文档加载节点
+# ==============================================
+class PrebuiltLoaderNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "document": (
+                    _list_prebuilt_docs_for_combo(),
+                    {"tooltip": t("Select a prebuilt document or folder from rag and models/RAG/Original corpus"), "label": t("document")}
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("RAG_DOCUMENTS", "STRING")
+    RETURN_NAMES = (t("documents"), t("summary"))
+    FUNCTION = "load_prebuilt"
+    CATEGORY = "RagPrompt"
+
+    def load_prebuilt(self, document: str):
+        _clear_vram_before_run(True)
+        if not document:
+            return ([], t("Please select or upload a document in the document field (txt/json/md/pdf)."))
+
+        try:
+            target_path = _resolve_prebuilt_target(document)
+        except Exception as e:
+            return ([], str(e))
+        
+        documents = []
+        errors = []
+        
+        files_to_load = []
+        if target_path.is_dir():
+            for ext in SUPPORTED_EXTENSIONS:
+                files_to_load.extend(target_path.glob(f"**/*{ext}"))
+        else:
+            files_to_load.append(target_path)
+            
+        for f in files_to_load:
+            try:
+                doc = load_single_document(f)
+                if doc.get("text"):
+                    documents.append(doc)
+            except Exception as e:
+                errors.append(f"{f.name}: {str(e)}")
+        
+        summary = t("Document load complete. Total files: {total}, succeeded: {success}, failed: {failed}", total=len(documents), success=len(documents), failed=len(errors))
+        if errors:
+            summary += t(" (failed: {count})", count=len(errors))
+            
+        gc.collect()
+        model_management.soft_empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            
+        return (documents, summary)
+
+
+# ==============================================
 # 节点注册
 # ==============================================
 NODE_CLASS_MAPPINGS = {
     "RagPromptDocumentLoader": DocumentLoaderNode,
+    "RagPromptPrebuiltLoader": PrebuiltLoaderNode,
     "RagPromptVectorStoreBuilder": VectorStoreBuilderNode,
     "RagPromptLMStudioChatAdvanced": LMStudioRAGChatNode,
     "RagPromptLMStudioChatSimple": LMStudioRAGChatSimpleNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RagPromptDocumentLoader": "RagPrompt 文档加载",
-    "RagPromptVectorStoreBuilder": "RagPrompt 向量库构建(FAISS)",
-    "RagPromptLMStudioChatAdvanced": "RagPrompt LM Studio 高级对话",
-    "RagPromptLMStudioChatSimple": "RagPrompt LM Studio 简约对话",
+    "RagPromptDocumentLoader": t("EasyRAG - Document Loader"),
+    "RagPromptPrebuiltLoader": t("Rag 预制文档加载"),
+    "RagPromptVectorStoreBuilder": t("EasyRAG - Vector Store Builder (FAISS)"),
+    "RagPromptLMStudioChatAdvanced": t("EasyRAG - LM Studio API (Advanced)"),
+    "RagPromptLMStudioChatSimple": t("EasyRAG - LM Studio API (Simple)"),
 }
