@@ -5,8 +5,8 @@ nodes.py
 rag_core.py
 requirements.txt
 web/i18n.js
-web/ragprompt_index_refresh.js
-web/ragprompt_upload.js
+web/rag_index_mode_ui.js
+web/rag_upload.js
 locales/en/main.json
 locales/en/nodeDefs.json
 locales/zh/main.json

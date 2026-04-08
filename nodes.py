@@ -11,12 +11,6 @@ import numpy as np
 from PIL import Image
 import torch
 import comfy.model_management as model_management
-try:
-    from server import PromptServer  # type: ignore
-    from aiohttp import web  # type: ignore
-except Exception:
-    PromptServer = None
-    web = None
 
 from .rag_core import (
     build_faiss_index,
@@ -76,20 +70,17 @@ def _list_prebuilt_docs_for_combo() -> List[str]:
         source_roots = _get_prebuilt_source_roots()
         items: List[str] = []
         seen = set()
-        for source, root in source_roots.items():
+        for root in source_roots.values():
             if not root.exists():
                 continue
             for item in root.iterdir():
-                name = item.name + "/" if item.is_dir() else item.name
+                name = f"📂 {item.name}" if item.is_dir() else f"📄 {item.name}"
                 if item.is_file() and not _is_supported_doc_file(str(item)):
                     continue
                 if name in seen:
                     continue
                 seen.add(name)
-                if item.is_dir():
-                    items.append(name)
-                else:
-                    items.append(name)
+                items.append(name)
         return sorted(items) if items else [""]
     except:
         return [""]
@@ -117,13 +108,20 @@ def _resolve_prebuilt_target(document: str) -> Path:
     if not raw:
         raise ValueError(t("Please select a prebuilt document source."))
 
+    # Support display labels such as "📂 folder" / "📄 file" from combo values.
+    normalized_raw = raw
+    for prefix in ("📂", "📄"):
+        if normalized_raw.startswith(prefix):
+            normalized_raw = normalized_raw[len(prefix):].strip()
+            break
+
     source_roots = _get_prebuilt_source_roots()
     candidates: List[Path] = []
-    relative = raw
+    relative = normalized_raw
 
     # Backward compatibility: support values like "plugin:xxx" and "original:xxx".
-    if ":" in raw:
-        maybe_source, maybe_relative = raw.split(":", 1)
+    if ":" in normalized_raw:
+        maybe_source, maybe_relative = normalized_raw.split(":", 1)
         if maybe_source in source_roots:
             relative = maybe_relative
             root = source_roots[maybe_source]
@@ -164,25 +162,6 @@ def _list_existing_indexes() -> List[str]:
             indexes.append(item.name)
     indexes = sorted(set(indexes))
     return indexes if indexes else ["default_index"]
-
-
-def _register_index_list_route() -> None:
-    if PromptServer is None or web is None:
-        return
-    instance = getattr(PromptServer, "instance", None)
-    if instance is None:
-        return
-    if getattr(instance, "_easyrag_index_route_registered", False):
-        return
-
-    @instance.routes.get("/easyrag/indexes")
-    async def easyrag_list_indexes(request):
-        return web.json_response({"items": _list_existing_indexes()})
-
-    instance._easyrag_index_route_registered = True
-
-
-_register_index_list_route()
 
 
 def _list_local_embedding_models() -> List[str]:
@@ -287,11 +266,29 @@ class DocumentLoaderNode:
 # 向量库构建节点
 # ==============================================
 class VectorStoreBuilderNode:
+    @staticmethod
+    def _build_mode_values() -> List[str]:
+        # Accept internal values and localized display values to avoid prompt validation failures
+        # when frontend displays translated labels.
+        return [
+            "create_new",
+            "use_existing",
+            "Create New",
+            "Use Existing",
+            "新建向量库",
+            "使用已有向量库",
+        ]
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "documents": ("RAG_DOCUMENTS", {"label": t("documents")}),
+                "build_mode": (cls._build_mode_values(), {
+                    "default": "create_new",
+                    "label": t("build_mode"),
+                    "tooltip": t("Choose whether to create a new vector store or use an existing one")
+                }),
                 "index_list": (_list_existing_indexes(), {
                     "default": "default_index",
                     "tooltip": t("Select an existing vector store"),
@@ -322,6 +319,7 @@ class VectorStoreBuilderNode:
     def build_vector_store(
         self,
         documents: List[Dict],
+        build_mode: str,
         index_list: str,
         index_name: str,
         embedding_model: str,
@@ -337,8 +335,23 @@ class VectorStoreBuilderNode:
         if not selected_model:
             print("❌ [RAG错误] 未选择有效的embedding模型！")
             raise ValueError("请选择有效的embedding模型")
+        mode_raw = str(build_mode or "create_new").strip().lower()
+        use_existing = (
+            mode_raw == "use_existing"
+            or "use existing" in mode_raw
+            or "已有" in mode_raw
+        )
+        existing_name = str(index_list or "").strip()
+        new_name = str(index_name or "").strip()
 
-        final_name = index_name.strip() or index_list.strip()
+        if use_existing:
+            final_name = existing_name
+            if not final_name:
+                raise ValueError(t("Please select an existing vector store"))
+        else:
+            final_name = new_name
+            if not final_name:
+                raise ValueError(t("Please enter a new vector store name"))
         index_dir = default_index_root() / final_name
 
         print("=" * 60)

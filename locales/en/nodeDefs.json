@@ -15,6 +15,13 @@
     "description": "Build FAISS vector index from loaded documents.",
     "inputs": {
       "documents": { "name": "documents" },
+      "build_mode": {
+        "name": "build_mode",
+        "options": {
+          "create_new": "Create New",
+          "use_existing": "Use Existing"
+        }
+      },
       "index_list": { "name": "index_list" },
       "index_name": { "name": "Create Vector Store Name" },
       "embedding_model": { "name": "embedding_model" },

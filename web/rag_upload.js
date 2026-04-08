@@ -2,10 +2,20 @@ import { app } from "/scripts/app.js";
 import { api } from "/scripts/api.js";
 import { t } from "./i18n.js";
 
-// 👇 已改成你节点的真实名称
 const TARGET_NODE_NAMES = new Set([
   "RagPromptDocumentLoader",
 ]);
+const UPLOAD_WIDGET_FLAG = "__easy_rag_upload_button";
+const DOC_WIDGET_NAMES = ["document", "文档"];
+
+function hasChineseUI(node) {
+  return (node.widgets || []).some((w) => /[\u3400-\u9fff]/.test(String(w?.name || "")));
+}
+
+function getWidgetByNames(node, names) {
+  const set = new Set(names.map((x) => String(x || "").trim().toLowerCase()));
+  return (node.widgets || []).find((w) => set.has(String(w?.name || "").trim().toLowerCase()));
+}
 
 function getComboValues(widget) {
   if (!widget) return [];
@@ -28,7 +38,7 @@ function setComboValues(widget, values) {
 }
 
 app.registerExtension({
-  name: "ragprompt.document-upload",
+  name: "rag.document-upload",
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (!TARGET_NODE_NAMES.has(nodeData.name)) {
       return;
@@ -38,11 +48,12 @@ app.registerExtension({
     nodeType.prototype.onNodeCreated = function () {
       const r = origOnNodeCreated ? origOnNodeCreated.apply(this, arguments) : undefined;
 
-      const hasButton = (this.widgets || []).some((w) => w.name === "upload_document");
+      const hasButton = (this.widgets || []).some((w) => !!w?.[UPLOAD_WIDGET_FLAG]);
       if (hasButton) return r;
 
       const self = this;
-      this.addWidget("button", "upload_document", t("Upload document"), async () => {
+      const buttonLabel = hasChineseUI(this) ? "上传文件夹" : t("Upload Folder");
+      const uploadWidget = this.addWidget("button", buttonLabel, buttonLabel, async () => {
         const picker = document.createElement("input");
         picker.type = "file";
         picker.accept = ".txt,.json,.md,.pdf";
@@ -68,7 +79,7 @@ app.registerExtension({
             const data = await resp.json();
             const savedName = data?.name || file.name;
 
-            const docWidget = (self.widgets || []).find((w) => w.name === "document");
+            const docWidget = getWidgetByNames(self, DOC_WIDGET_NAMES);
             if (docWidget) {
               const values = getComboValues(docWidget).slice();
               if (!values.includes(savedName)) {
@@ -83,7 +94,7 @@ app.registerExtension({
               app.graph.setDirtyCanvas(true, true);
             }
           } catch (err) {
-            console.error("[RagPrompt] 文档上传失败:", err);
+            console.error("[Rag] 文档上传失败:", err);
             alert(t("Document upload failed: {error}", { error: err?.message || err }));
           } finally {
             picker.remove();
@@ -93,6 +104,7 @@ app.registerExtension({
         document.body.appendChild(picker);
         picker.click();
       });
+      if (uploadWidget) uploadWidget[UPLOAD_WIDGET_FLAG] = true;
 
       return r;
     };

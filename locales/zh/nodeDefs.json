@@ -15,6 +15,13 @@
     "description": "根据已加载文档构建 FAISS 向量索引。",
     "inputs": {
       "documents": { "name": "文档" },
+      "build_mode": {
+        "name": "操作模式",
+        "options": {
+          "create_new": "新建向量库",
+          "use_existing": "使用已有向量库"
+        }
+      },
       "index_list": { "name": "已有向量库" },
       "index_name": { "name": "创建向量库名" },
       "embedding_model": { "name": "向量模型" },
