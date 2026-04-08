@@ -129,6 +129,3 @@ locales/
 - `requests>=2.31.0`
 - `pypdf>=4.0.0`
 
-## 致谢
-
-项目基于原仓库演进：<https://github.com/nregret/Comfyui-Easy-RAG>
