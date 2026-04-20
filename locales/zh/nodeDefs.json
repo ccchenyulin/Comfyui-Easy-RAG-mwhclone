@@ -1,17 +1,17 @@
 {
   "RagPromptDocumentLoader": {
-    "display_name": "Rag 文档加载",
+    "display_name": "EasyRAG - 文档加载",
     "description": "从 ComfyUI input 目录加载一个文档用于 RAG。",
+    "inputs": {
+      "document": { "name": "文档" }
+    },
     "outputs": {
       "0": { "name": "文档" },
       "1": { "name": "摘要" }
-    },
-    "inputs": {
-      "document": { "name": "文档" }
     }
   },
   "RagPromptVectorStoreBuilder": {
-    "display_name": "Rag 向量库构建",
+    "display_name": "EasyRAG - 向量库构建(FAISS)",
     "description": "根据已加载文档构建 FAISS 向量索引。",
     "inputs": {
       "documents": { "name": "文档" },
@@ -36,22 +36,22 @@
     }
   },
   "RagPromptLMStudioChatAdvanced": {
-    "display_name": "Rag LM Studio API 高级",
+    "display_name": "EasyRAG - LM Studio API (高级)",
     "description": "支持可选 RAG 检索与图像输入的问答节点。",
     "inputs": {
       "question": { "name": "问题" },
       "base_url": { "name": "服务地址" },
       "model": { "name": "模型" },
+      "system_prompt_source": { "name": "系统提示词预设" },
       "system_prompt": { "name": "系统提示词" },
       "temperature": { "name": "温度" },
       "max_tokens": { "name": "最大输出词数" },
-      "top_k": { "name": "Top K" },
+      "seed": { "name": "种子" },
+      "top_k": { "name": "检索数量 (Top K)" },
       "stream": { "name": "流式输出" },
-      "clear_vram_before_run": { "name": "运行前清理显存" },
       "unload_model_after_response": { "name": "回答后卸载模型" },
       "rag_index": { "name": "RAG 索引" },
-      "image": { "name": "图像" },
-      "seed": { "name": "种子" }
+      "image": { "name": "图像" }
     },
     "outputs": {
       "0": { "name": "答案" },
@@ -60,24 +60,45 @@
     }
   },
   "RagPromptLMStudioChatSimple": {
-    "display_name": "Rag LM Studio API 简约",
+    "display_name": "EasyRAG - LM Studio API (简约)",
     "description": "精简参数的问答节点，支持可选 RAG 检索。",
     "inputs": {
       "question": { "name": "问题" },
       "base_url": { "name": "服务地址" },
       "model": { "name": "模型" },
-      "system_prompt_source": { 
-        "name": "系统提示词来源"
-      },
+      "system_prompt_source": { "name": "系统提示词预设" },
       "system_prompt": { "name": "系统提示词" },
-      "clear_vram_before_run": { "name": "运行前清理显存" },
+      "seed": { "name": "种子" },
       "unload_model_after_response": { "name": "回答后卸载模型" },
       "rag_index": { "name": "RAG 索引" },
-      "image": { "name": "图像" },
-      "seed": { "name": "种子" }
+      "image": { "name": "图像" }
     },
     "outputs": {
       "0": { "name": "答案" }
+    }
+  },
+  "RagPromptExternalChatAdvanced": {
+    "display_name": "EasyRAG - 外部 API (高级)",
+    "description": "调用云端 OpenAI 兼容接口（如 DeepSeek, GPT）的 RAG 问答节点。",
+    "inputs": {
+      "question": { "name": "问题" },
+      "base_url": { "name": "服务地址" },
+      "api_key": { "name": "API 密钥" },
+      "model": { "name": "模型" },
+      "system_prompt_source": { "name": "系统提示词预设" },
+      "system_prompt": { "name": "系统提示词" },
+      "temperature": { "name": "温度" },
+      "max_tokens": { "name": "最大输出词数" },
+      "seed": { "name": "种子" },
+      "top_k": { "name": "检索数量 (Top K)" },
+      "stream": { "name": "流式输出" },
+      "rag_index": { "name": "RAG 索引" },
+      "image": { "name": "图像" }
+    },
+    "outputs": {
+      "0": { "name": "答案" },
+      "1": { "name": "上下文" },
+      "2": { "name": "原始响应" }
     }
   },
   "RagPromptPrebuiltLoader": {

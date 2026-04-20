@@ -666,11 +666,18 @@ def _extract_answer_from_responses_payload(data: Dict) -> Dict:
     return {"answer": _pick_answer(c, r).strip(), "content_text": c, "reasoning_text": r}
 
 
-def _stream_chat_completions(ep, payload, timeout, emit):
+def _stream_chat_completions(ep, payload, timeout, emit, headers=None):
     c_parts = []
     r_parts = []
     s_parts = []
-    with requests.post(ep, json=payload, stream=True, timeout=timeout) as resp:
+    with requests.post(ep, json=payload, headers=headers, stream=True, timeout=timeout) as resp:
+        if not resp.ok:
+            error_detail = ""
+            try:
+                error_detail = resp.text
+            except:
+                pass
+            raise RuntimeError(f"HTTP {resp.status_code}: {error_detail or resp.reason}")
         resp.raise_for_status()
         for line in resp.iter_lines(decode_unicode=False):
             if not line:
@@ -698,8 +705,6 @@ def _stream_chat_completions(ep, payload, timeout, emit):
                 s_parts.append(r)
                 if emit:
                     print(r, end="", flush=True)
-    # 这里！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-    # 原来多了一个 )，我只删了这个！！
     if emit and s_parts:
         print()
     return {
@@ -842,6 +847,94 @@ def lmstudio_chat(
         torch.cuda.empty_cache()
 
     return {"answer": ext["answer"].strip(), "raw": data, "model": model, "stream_text": ext["answer"].strip()}
+
+
+def external_api_chat(
+    base_url: str,
+    api_key: str,
+    model: str,
+    question: str,
+    context: str = "",
+    image_data_url: str = "",
+    system_prompt: str = "You are a helpful assistant.",
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+    seed: Optional[int] = None,
+    stream: bool = False,
+    emit_stream_log: bool = False,
+    timeout: int = 120,
+) -> Dict:
+    q = question.strip()
+    if context.strip():
+        q = t("请根据上下文回答：\n{context}\n\n问题：{question}", context=context.strip(), question=question.strip())
+
+    base = base_url.rstrip("/")
+    # 强制使用标准的 chat/completions 路径
+    if not base.endswith("/v1") and not base.endswith("/v1/"):
+        # 自动补全 /v1 如果用户没填
+        ep = base + "/v1/chat/completions"
+    elif base.endswith("/v1"):
+        ep = base + "/chat/completions"
+    else:
+        ep = base + "chat/completions"
+
+    # 如果用户填的是完整的 endpoint，则直接使用
+    if "/chat/completions" in base_url:
+        ep = base_url
+
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    }
+    if api_key.strip():
+        headers["Authorization"] = f"Bearer {api_key.strip()}"
+
+    msg = [{"role": "system", "content": system_prompt}, {"role": "user", "content": q}]
+    if image_data_url.strip():
+        msg[1]["content"] = [
+            {"type": "text", "text": q},
+            {"type": "image_url", "image_url": {"url": image_data_url.strip()}}
+        ]
+    
+    payload = {
+        "model": model,
+        "messages": msg,
+        "stream": stream,
+        "temperature": temperature,
+    }
+    # 只有当 max_tokens > 0 时才发送，避免某些 API 报错
+    if max_tokens > 0:
+        payload["max_tokens"] = max_tokens
+        
+    if seed is not None and seed > 0:
+        payload["seed"] = seed
+
+    try:
+        if stream:
+            res = _stream_chat_completions(ep, payload, timeout, emit_stream_log, headers=headers)
+            return {"answer": res["answer"], "raw": res["raw"], "model": model, "stream_text": res["stream_text"]}
+        
+        resp = requests.post(ep, json=payload, headers=headers, timeout=timeout)
+        if not resp.ok:
+            error_detail = ""
+            try:
+                error_detail = resp.text
+            except:
+                pass
+            raise RuntimeError(f"HTTP {resp.status_code}: {error_detail or resp.reason}")
+            
+        data = resp.json()
+        ext = _extract_answer_from_chat_payload(data)
+        
+        # 清理
+        gc.collect()
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            
+        return {"answer": ext["answer"].strip(), "raw": data, "model": model, "stream_text": ext["answer"].strip()}
+    except Exception as e:
+        raise RuntimeError(f"API 调用失败：{e}")
 
 
 def extract_answer_between_newlines(content: str) -> str:

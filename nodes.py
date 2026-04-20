@@ -22,6 +22,7 @@ from .rag_core import (
     search_index,
     unload_embedding_model,
     unload_lmstudio_model,
+    external_api_chat,
 )
 from .i18n import t
 
@@ -458,6 +459,10 @@ class LMStudioRAGChatNode:
                 "question": ("STRING", {"multiline": True, "label": t("question")}),
                 "base_url": ("STRING", {"default": "http://127.0.0.1:1234", "label": t("base_url")}),
                 "model": (_list_lmstudio_models_for_ui(), {"label": t("model")}),
+                "system_prompt_source": (_list_system_prompt_files_for_combo(), {
+                    "default": "🛠️ 自定义",
+                    "label": t("system_prompt_source")
+                }),
                 "system_prompt": ("STRING", {
                     "multiline": True,
                     "default": t("You are a rigorous local RAG assistant. Prefer answering from the provided context."),
@@ -481,9 +486,20 @@ class LMStudioRAGChatNode:
     FUNCTION = "chat_with_rag"
     CATEGORY = "RagPrompt"
 
-    def chat_with_rag(self, question, base_url, model, system_prompt, temperature, max_tokens, seed, top_k, stream, unload_model_after_response, rag_index=None, image=None):
+    def chat_with_rag(self, question, base_url, model, system_prompt, system_prompt_source, temperature, max_tokens, seed, top_k, stream, unload_model_after_response, rag_index=None, image=None):
         # 【2】每个节点第一行：清显存
         _clear_vram_before_run(True)
+
+        # 判断使用哪个系统提示词
+        if system_prompt_source and "🛠️" not in system_prompt_source and "自定义" not in system_prompt_source:
+            file_content = _resolve_system_prompt_file(system_prompt_source)
+            if file_content:
+                print(f"📝 [高级API] 使用文件系统提示词: {system_prompt_source}")
+                system_prompt = file_content
+            else:
+                print(f"📝 [高级API] 未找到提示词文件或内容为空，使用输入框提示词")
+        else:
+            print(f"📝 [高级API] 使用自定义输入框提示词")
 
         base = base_url.strip()
         models = list_lmstudio_models(base)
@@ -641,6 +657,105 @@ class LMStudioRAGChatSimpleNode:
 
 
 # ==============================================
+# 外部 API 对话节点 (高级)
+# ==============================================
+class ExternalRAGChatNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "question": ("STRING", {"multiline": True, "label": t("question")}),
+                "base_url": ("STRING", {"default": "https://api.deepseek.com", "label": t("base_url")}),
+                "api_key": ("STRING", {"default": "", "label": t("api_key")}),
+                "model": ("STRING", {"default": "deepseek-chat", "label": t("model")}),
+                "system_prompt_source": (_list_system_prompt_files_for_combo(), {
+                    "default": "🛠️ 自定义",
+                    "label": t("system_prompt_source")
+                }),
+                "system_prompt": ("STRING", {
+                    "multiline": True,
+                    "default": t("You are a rigorous local RAG assistant. Prefer answering from the provided context."),
+                    "label": t("system_prompt")
+                }),
+                "temperature": ("FLOAT", {"default": 0.7, "label": t("temperature")}),
+                "max_tokens": ("INT", {"default": 2048, "min": 0, "max": 8192, "step": 512, "label": t("max_tokens")}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "label": t("seed")}),
+                "top_k": ("INT", {"default": 5, "min": 1, "max": 100, "label": t("top_k")}),
+                "stream": ("BOOLEAN", {"default": True, "label": t("stream")}),
+            },
+            "optional": {
+                "rag_index": ("RAG_INDEX", {"label": t("rag_index")}),
+                "image": ("IMAGE", {"label": t("image")})
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = (t("answer"), t("context_used"), t("raw_response"))
+    FUNCTION = "chat_with_external_rag"
+    CATEGORY = "RagPrompt"
+
+    def chat_with_external_rag(self, question, base_url, api_key, model, system_prompt, system_prompt_source, temperature, max_tokens, seed, top_k, stream, rag_index=None, image=None):
+        _clear_vram_before_run(True)
+
+        # 判断使用哪个系统提示词
+        if system_prompt_source and "🛠️" not in system_prompt_source and "自定义" not in system_prompt_source:
+            file_content = _resolve_system_prompt_file(system_prompt_source)
+            if file_content:
+                print(f"📝 [外部API] 使用文件系统提示词: {system_prompt_source}")
+                system_prompt = file_content
+            else:
+                print(f"📝 [外部API] 未找到提示词文件或内容为空，使用输入框提示词")
+        else:
+            print(f"📝 [外部API] 使用自定义输入框提示词")
+
+        base = base_url.strip()
+        chosen = model.strip()
+
+        print(f"🌐 [外部API] 使用模型: {chosen}")
+        print(f"🔗 [外部API] 请求地址: {base}")
+
+        ctx = ""
+        if rag_index:
+            ref = rag_index.get("index_dir") or rag_index.get("index_name")
+            print(f"🔍 [外部API] 开始RAG检索 (top_k={top_k})")
+            res = search_index(ref, question, top_k=top_k, device="cpu")
+            ctx = res["context"]
+            print(f"✅ [外部API] RAG检索完成")
+            try:
+                unload_embedding_model(rag_index["embedding_model"])
+            except:
+                pass
+
+        img = _image_tensor_to_data_url(image)
+        print(f"🚀 [外部API] 开始调用云端生成...")
+        
+        resp = external_api_chat(
+            base_url=base,
+            api_key=api_key,
+            model=chosen,
+            question=question,
+            context=ctx,
+            image_data_url=img,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            seed=seed,
+            stream=stream,
+            emit_stream_log=True
+        )
+        
+        print(f"✅ [外部API] 生成完成")
+
+        gc.collect()
+        model_management.soft_empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        ans = extract_answer_between_newlines(resp["answer"])
+        return (ans, ctx, json.dumps(resp, ensure_ascii=False))
+
+
+# ==============================================
 # 预制文档加载节点
 # ==============================================
 class PrebuiltLoaderNode:
@@ -709,6 +824,7 @@ NODE_CLASS_MAPPINGS = {
     "RagPromptVectorStoreBuilder": VectorStoreBuilderNode,
     "RagPromptLMStudioChatAdvanced": LMStudioRAGChatNode,
     "RagPromptLMStudioChatSimple": LMStudioRAGChatSimpleNode,
+    "RagPromptExternalChatAdvanced": ExternalRAGChatNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -717,4 +833,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RagPromptVectorStoreBuilder": t("EasyRAG - Vector Store Builder (FAISS)"),
     "RagPromptLMStudioChatAdvanced": t("EasyRAG - LM Studio API (Advanced)"),
     "RagPromptLMStudioChatSimple": t("EasyRAG - LM Studio API (Simple)"),
+    "RagPromptExternalChatAdvanced": t("EasyRAG - External API (Advanced)"),
 }

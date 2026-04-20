@@ -2,12 +2,12 @@
   "RagPromptDocumentLoader": {
     "display_name": "EasyRAG - Document Loader",
     "description": "Load a document from ComfyUI input directory for RAG.",
+    "inputs": {
+      "document": { "name": "document" }
+    },
     "outputs": {
       "0": { "name": "documents" },
       "1": { "name": "summary" }
-    },
-    "inputs": {
-      "document": { "name": "document" }
     }
   },
   "RagPromptVectorStoreBuilder": {
@@ -42,16 +42,16 @@
       "question": { "name": "question" },
       "base_url": { "name": "base_url" },
       "model": { "name": "model" },
+      "system_prompt_source": { "name": "System Prompt Preset" },
       "system_prompt": { "name": "system_prompt" },
       "temperature": { "name": "temperature" },
       "max_tokens": { "name": "max_tokens" },
+      "seed": { "name": "seed" },
       "top_k": { "name": "top_k" },
       "stream": { "name": "stream" },
-      "clear_vram_before_run": { "name": "clear_vram_before_run" },
       "unload_model_after_response": { "name": "unload_model_after_response" },
       "rag_index": { "name": "rag_index" },
-      "image": { "name": "image" },
-      "seed": { "name": "seed" }
+      "image": { "name": "image" }
     },
     "outputs": {
       "0": { "name": "answer" },
@@ -66,18 +66,39 @@
       "question": { "name": "question" },
       "base_url": { "name": "base_url" },
       "model": { "name": "model" },
-      "system_prompt_source": { 
-        "name": "System Prompt Source"
-      },
+      "system_prompt_source": { "name": "System Prompt Preset" },
       "system_prompt": { "name": "system_prompt" },
-      "clear_vram_before_run": { "name": "clear_vram_before_run" },
+      "seed": { "name": "seed" },
       "unload_model_after_response": { "name": "unload_model_after_response" },
       "rag_index": { "name": "rag_index" },
-      "image": { "name": "image" },
-      "seed": { "name": "seed" }
+      "image": { "name": "image" }
     },
     "outputs": {
       "0": { "name": "answer" }
+    }
+  },
+  "RagPromptExternalChatAdvanced": {
+    "display_name": "EasyRAG - External API (Advanced)",
+    "description": "Chat node for cloud OpenAI-compatible APIs (e.g. DeepSeek, GPT) with RAG.",
+    "inputs": {
+      "question": { "name": "question" },
+      "base_url": { "name": "base_url" },
+      "api_key": { "name": "api_key" },
+      "model": { "name": "model" },
+      "system_prompt_source": { "name": "System Prompt Preset" },
+      "system_prompt": { "name": "system_prompt" },
+      "temperature": { "name": "temperature" },
+      "max_tokens": { "name": "max_tokens" },
+      "seed": { "name": "seed" },
+      "top_k": { "name": "top_k" },
+      "stream": { "name": "stream" },
+      "rag_index": { "name": "rag_index" },
+      "image": { "name": "image" }
+    },
+    "outputs": {
+      "0": { "name": "answer" },
+      "1": { "name": "context_used" },
+      "2": { "name": "raw_response" }
     }
   },
   "RagPromptPrebuiltLoader": {
