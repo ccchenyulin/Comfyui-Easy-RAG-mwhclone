@@ -25,15 +25,12 @@ def _candidate_files(lang: str) -> list[Path]:
 
 
 def _load_translations(lang: str) -> Dict[str, str]:
-    if lang in _TRANSLATIONS:
-        return _TRANSLATIONS[lang]
-
+    # 每次都重新加载，不使用缓存，确保翻译文件更新后立即生效
     for p in _candidate_files(lang):
         if not p.exists():
             continue
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
-            _TRANSLATIONS[lang] = data
             return data
         except Exception:
             continue
@@ -44,12 +41,10 @@ def _load_translations(lang: str) -> Dict[str, str]:
                 continue
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
-                _TRANSLATIONS[lang] = data
                 return data
             except Exception:
                 continue
 
-    _TRANSLATIONS[lang] = {}
     return {}
 
 

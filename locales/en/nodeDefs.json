@@ -66,6 +66,9 @@
       "question": { "name": "question" },
       "base_url": { "name": "base_url" },
       "model": { "name": "model" },
+      "system_prompt_source": { 
+        "name": "System Prompt Source"
+      },
       "system_prompt": { "name": "system_prompt" },
       "clear_vram_before_run": { "name": "clear_vram_before_run" },
       "unload_model_after_response": { "name": "unload_model_after_response" },

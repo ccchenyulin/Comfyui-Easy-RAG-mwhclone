@@ -142,6 +142,8 @@
   "stream": "Stream",
   "summary": "summary",
   "system_prompt": "System Prompt",
+  "system_prompt_source": "System Prompt Source",
+  "选择系统提示词来源：自定义使用输入框内容，其他选项使用文件内容": "Select system prompt source: Custom uses input box content, other options use file content",
   "temperature": "Temperature",
   "top_k": "Top K",
   "torch cuda cleanup failed": "torch cuda cleanup failed",

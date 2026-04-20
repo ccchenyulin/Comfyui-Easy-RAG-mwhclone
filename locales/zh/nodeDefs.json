@@ -66,6 +66,9 @@
       "question": { "name": "问题" },
       "base_url": { "name": "服务地址" },
       "model": { "name": "模型" },
+      "system_prompt_source": { 
+        "name": "系统提示词来源"
+      },
       "system_prompt": { "name": "系统提示词" },
       "clear_vram_before_run": { "name": "运行前清理显存" },
       "unload_model_after_response": { "name": "回答后卸载模型" },

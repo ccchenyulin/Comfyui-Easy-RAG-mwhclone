@@ -3,18 +3,18 @@ from __future__ import annotations
 # ----------------------------
 # sentence-transformers 5.x 兼容补丁
 # ----------------------------
-def patch_pooling():
-    try:
-        from sentence_transformers.models import Pooling
-        original_init = Pooling.__init__
-        def fixed_init(self, word_embedding_dimension=None, *args, **kwargs):
-            if word_embedding_dimension is None:
-                word_embedding_dimension = 768
-            return original_init(self, word_embedding_dimension, *args, **kwargs)
-        Pooling.__init__ = fixed_init
-    except Exception:
-        pass
-patch_pooling()
+# def patch_pooling():
+#     try:
+#         from sentence_transformers.models import Pooling
+#         original_init = Pooling.__init__
+#         def fixed_init(self, word_embedding_dimension=None, *args, **kwargs):
+#             if word_embedding_dimension is None:
+#                 word_embedding_dimension = 768
+#             return original_init(self, word_embedding_dimension, *args, **kwargs)
+#         Pooling.__init__ = fixed_init
+#     except Exception:
+#         pass
+# patch_pooling()
 
 # ============================
 # 纯 TXT 优化版，无多余 JSON 干扰

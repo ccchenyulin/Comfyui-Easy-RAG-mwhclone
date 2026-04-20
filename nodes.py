@@ -86,6 +86,46 @@ def _list_prebuilt_docs_for_combo() -> List[str]:
         return [""]
 
 
+def _list_system_prompt_files_for_combo() -> List[str]:
+    """列出 systemprompt 文件夹中的文件，第一个选项为'自定义'"""
+    systemprompt_root = Path(__file__).resolve().parent / "systemprompt"
+    items = ["🛠️ 自定义"]  # 第一个选项
+    
+    try:
+        if systemprompt_root.exists():
+            for item in systemprompt_root.iterdir():
+                if item.is_file() and item.suffix.lower() in {".txt", ".md"}:
+                    items.append(f"📄 {item.name}")
+    except:
+        pass
+    
+    return items if len(items) > 1 else ["🛠️ 自定义"]
+
+
+def _resolve_system_prompt_file(selection: str) -> str:
+    """根据选择返回系统提示词内容，如果选择'自定义'或文件不存在返回空字符串"""
+    if not selection or "🛠️" in selection or "自定义" in selection:
+        return ""  # 返回空字符串，表示使用输入框内容
+    
+    # 去除图标前缀
+    normalized_selection = selection
+    for prefix in ("📄", "📜"):
+        if normalized_selection.startswith(prefix):
+            normalized_selection = normalized_selection[len(prefix):].strip()
+            break
+    
+    systemprompt_root = Path(__file__).resolve().parent / "systemprompt"
+    file_path = systemprompt_root / normalized_selection
+    
+    try:
+        if file_path.exists():
+            return file_path.read_text(encoding="utf-8").strip()
+    except Exception as e:
+        print(f"⚠️ [EasyRAG] 读取系统提示词文件失败: {e}")
+    
+    return ""  # 文件不存在或读取失败时回退到自定义
+
+
 def _get_prebuilt_source_roots() -> Dict[str, Path]:
     plugin_rag_root = Path(__file__).resolve().parent / "rag"
     plugin_rag_root.mkdir(parents=True, exist_ok=True)
@@ -517,6 +557,10 @@ class LMStudioRAGChatSimpleNode:
                 "question": ("STRING", {"multiline": True, "label": t("question")}),
                 "base_url": ("STRING", {"default": "http://127.0.0.1:1234", "label": t("base_url")}),
                 "model": (_list_lmstudio_models_for_ui(), {"label": t("model")}),
+                "system_prompt_source": (_list_system_prompt_files_for_combo(), {
+                    "default": "🛠️ 自定义",
+                    "label": t("system_prompt_source")
+                }),
                 "system_prompt": ("STRING", {
                     "multiline": True,
                     "default": t("You are a rigorous local RAG assistant. Prefer answering from the provided context."),
@@ -536,9 +580,20 @@ class LMStudioRAGChatSimpleNode:
     FUNCTION = "chat_simple"
     CATEGORY = "RagPrompt"
 
-    def chat_simple(self, question, base_url, model, system_prompt, seed, unload_model_after_response, rag_index=None, image=None):
+    def chat_simple(self, question, base_url, model, system_prompt, system_prompt_source, seed, unload_model_after_response, rag_index=None, image=None):
         # 【2】每个节点第一行：清显存
         _clear_vram_before_run(True)
+        
+        # 判断使用哪个系统提示词
+        if system_prompt_source and "🛠️" not in system_prompt_source and "自定义" not in system_prompt_source:
+            file_content = _resolve_system_prompt_file(system_prompt_source)
+            if file_content:
+                print(f"📝 [简约API] 使用文件系统提示词: {system_prompt_source}")
+                system_prompt = file_content
+            else:
+                print(f"📝 [简约API] 未找到提示词文件或内容为空，使用输入框提示词")
+        else:
+            print(f"📝 [简约API] 使用自定义输入框提示词")
         
         base = base_url.strip()
         models = list_lmstudio_models(base)

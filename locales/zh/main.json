@@ -142,6 +142,8 @@
   "stream": "流式输出",
   "summary": "摘要",
   "system_prompt": "系统提示词",
+  "system_prompt_source": "系统提示词来源",
+  "选择系统提示词来源：自定义使用输入框内容，其他选项使用文件内容": "选择系统提示词来源：自定义使用输入框内容，其他选项使用文件内容",
   "temperature": "温度",
   "top_k": "检索数量 (Top K)",
   "torch cuda cleanup failed": "torch CUDA 清理失败",
