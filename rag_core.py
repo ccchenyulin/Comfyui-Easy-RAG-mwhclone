@@ -1,20 +1,38 @@
 from __future__ import annotations
 
 # ----------------------------
-# sentence-transformers 5.x 兼容补丁
+# sentence-transformers 兼容补丁 (智能自适应)
 # ----------------------------
-# def patch_pooling():
-#     try:
-#         from sentence_transformers.models import Pooling
-#         original_init = Pooling.__init__
-#         def fixed_init(self, word_embedding_dimension=None, *args, **kwargs):
-#             if word_embedding_dimension is None:
-#                 word_embedding_dimension = 768
-#             return original_init(self, word_embedding_dimension, *args, **kwargs)
-#         Pooling.__init__ = fixed_init
-#     except Exception:
-#         pass
-# patch_pooling()
+def patch_pooling():
+    try:
+        from sentence_transformers.models import Pooling
+        import inspect
+        original_init = Pooling.__init__
+        
+        # 避免重复打补丁
+        if getattr(original_init, "_is_patched", False):
+            return
+            
+        sig = inspect.signature(original_init)
+        
+        def fixed_init(self, *args, **kwargs):
+            # 检查 original_init 需要的参数
+            params = list(sig.parameters.keys())
+            
+            # 如果 args 没有传第一个参数 (除了 self)，且 kwargs 里也没有
+            if len(args) == 0 and len(params) > 1:
+                first_param = params[1]  # 通常是 'word_embedding_dimension' 或 'embedding_dimension'
+                if first_param not in kwargs:
+                    kwargs[first_param] = 768  # 默认降维大小
+                    
+            return original_init(self, *args, **kwargs)
+            
+        fixed_init._is_patched = True
+        Pooling.__init__ = fixed_init
+    except Exception:
+        pass
+
+patch_pooling()
 
 # ============================
 # 纯 TXT 优化版，无多余 JSON 干扰
