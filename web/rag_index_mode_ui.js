@@ -133,17 +133,38 @@ function applyModeUI(node) {
   setWidgetVisible(indexNameWidget, !usingExisting);
 }
 
+// ✅ 新增刷新索引列表函数
+async function refreshIndexList(node) {
+  try {
+    const resp = await fetch("/easyrag/list_indexes");
+    const data = await resp.json();
+    const indexes = data.indexes || [];
+    if (!indexes.length) return;
+
+    const indexListWidget = getWidgetByNames(node, INDEX_LIST_NAMES);
+    if (!indexListWidget) return;
+
+    setComboValues(indexListWidget, indexes);
+    if (!indexes.includes(indexListWidget.value)) {
+      indexListWidget.value = indexes[indexes.length - 1]; // 选最新的
+    }
+
+    applyModeUI(node);
+    if (app.graph) app.graph.setDirtyCanvas(true, true);
+  } catch (e) {
+    console.error("[EasyRAG] 刷新索引列表失败:", e);
+  }
+}
+
 app.registerExtension({
   name: "rag.index-mode-ui",
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (nodeData.name !== TARGET_NODE) return;
 
     // Fix: Prune the list of options at registration level to prevent UI clutter (6 options bug).
-    // This happens once per node type and ensures the widget's 'source of truth' is clean.
     const buildModeInput = nodeData.input?.required?.build_mode;
     if (buildModeInput && Array.isArray(buildModeInput[0])) {
       const zh = preferChineseLocale();
-      // Replace the global options list for this node type
       if (zh) {
         buildModeInput[0] = ["新建向量库", "使用已有向量库"];
       } else {
@@ -167,6 +188,16 @@ app.registerExtension({
         };
       }
 
+      // ✅ 加刷新按钮
+      const self = this;
+      const hasRefreshBtn = (this.widgets || []).some(w => w.__easyrag_refresh_btn);
+      if (!hasRefreshBtn) {
+        const btn = this.addWidget("button", "🔄 刷新索引列表", "refresh", () => {
+          refreshIndexList(self);
+        });
+        if (btn) btn.__easyrag_refresh_btn = true;
+      }
+
       applyModeUI(this);
       return r;
     };
@@ -178,4 +209,3 @@ app.registerExtension({
     };
   },
 });
-

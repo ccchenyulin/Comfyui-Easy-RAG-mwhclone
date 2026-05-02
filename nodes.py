@@ -14,6 +14,7 @@ import comfy.model_management as model_management
 
 from .rag_core import (
     build_faiss_index,
+    update_faiss_index,
     default_index_root,
     extract_answer_between_newlines,
     list_lmstudio_models,
@@ -399,36 +400,47 @@ class VectorStoreBuilderNode:
         print(f"[RAG向量库] 处理中 | 库名称: {final_name}")
         print(f"[RAG向量库] 库路径: {index_dir}")
 
-        if (index_dir / "index.faiss").exists():
+        if use_existing:
+            # 使用已有模式：直接读现有信息，不重建
+            if not (index_dir / "index.faiss").exists():
+                raise ValueError(t("Please select an existing vector store"))
             try:
                 chunks = json.loads((index_dir / "chunks.json").read_text("utf-8"))
                 cnt = len(chunks)
             except:
                 cnt = 0
-            info = {
-                "index_name": final_name,
-                "index_dir": str(index_dir),
-                "embedding_model": selected_model,
-                "show_retrieval_log": show_retrieval_log
-            }
             try:
                 meta = json.loads((index_dir / "meta.json").read_text("utf-8"))
                 cnt_docs = meta.get("documents_count", 0)
             except:
                 cnt_docs = 0
-            summary = t("Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}", index_name=final_name, documents_count=cnt_docs, chunks_count=cnt, selected_model=selected_model, index_dir=str(index_dir))
-            print(f"✅ [RAG日志] 向量库已存在，跳过构建 | 块数: {cnt}")
+            info = {
+                "index_name": final_name,
+                "index_dir": str(index_dir),
+                "embedding_model": selected_model,
+                "show_retrieval_log": show_retrieval_log,
+            }
+            summary = t("Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}",
+                index_name=final_name, documents_count=cnt_docs, chunks_count=cnt,
+                selected_model=selected_model, index_dir=str(index_dir))
+            print(f"✅ [RAG日志] 使用已有向量库 | 块数: {cnt}")
         else:
-            info = build_faiss_index(
+            # 新建/更新模式：走增量，自动判断是全量还是增量
+            info = update_faiss_index(
                 documents=documents,
                 embedding_model=selected_model,
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
-                index_name=final_name
+                index_name=final_name,
             )
+            info["show_retrieval_log"] = show_retrieval_log
             cnt = info.get("chunks_count", 0)
-            summary = t("Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}", index_name=info["index_name"], documents_count=info["documents_count"], chunks_count=info["chunks_count"], selected_model=selected_model, index_dir=info["index_dir"])
-            print(f"🆕 [RAG日志] 新建向量库成功 | 块数: {cnt}")
+            cnt_docs = info.get("documents_count", 0)
+            reembedded = info.get("reembedded", cnt)
+            summary = t("Vector store built: {index_name}, documents: {documents_count}, chunks: {chunks_count}, model: {selected_model}, path: {index_dir}",
+                index_name=final_name, documents_count=cnt_docs, chunks_count=cnt,
+                selected_model=selected_model, index_dir=str(index_dir))
+            print(f"✅ [RAG日志] 处理完成 | 总块数: {cnt}，本次重新嵌入: {reembedded}")
 
         if unload_embedding_model_after_build:
             print(f"♻️ [RAG日志] 已卸载embedding模型")
@@ -895,3 +907,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RagPromptExternalChatAdvanced": t("EasyRAG - External API (Advanced)"),
     "RagPromptRetriever": t("EasyRAG - RAG 纯检索（无需API）"),
 }
+
+# ✅ 刷新索引列表接口
+try:
+    from server import PromptServer
+    from aiohttp import web
+
+    @PromptServer.instance.routes.get("/easyrag/list_indexes")
+    async def _easyrag_list_indexes(request):
+        return web.json_response({"indexes": _list_existing_indexes()})
+except Exception:
+    pass
