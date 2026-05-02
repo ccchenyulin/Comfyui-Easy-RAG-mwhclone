@@ -814,6 +814,64 @@ class PrebuiltLoaderNode:
             
         return (documents, summary)
 
+# ==============================================
+# 纯 RAG 检索节点（无需 API，直接看检索结果）
+# ==============================================
+class RAGRetrieverNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "question": ("STRING", {"multiline": True, "label": t("question")}),
+                "top_k": ("INT", {"default": 5, "min": 1, "max": 100, "label": t("top_k")}),
+            },
+            "optional": {
+                "rag_index": ("RAG_INDEX", {"label": t("rag_index")}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "BOOLEAN")
+    RETURN_NAMES = (t("context"), t("raw_items_json"), t("has_result"))
+    FUNCTION = "retrieve_only"
+    CATEGORY = "RagPrompt"
+
+    def retrieve_only(self, question, top_k, rag_index=None):
+        _clear_vram_before_run(True)
+
+        if not rag_index:
+            return ("", "[]", False)
+
+        ref = rag_index.get("index_dir") or rag_index.get("index_name")
+        print(f"🔍 [RAG检索] 查询: {question.strip()[:50]}...")
+        print(f"🔍 [RAG检索] top_k={top_k}")
+
+        res = search_index(ref, question, top_k=top_k, device="cpu")
+        ctx = res["context"]
+        items = res["items"]
+        has_result = res["rag_hit"]
+
+        print(f"✅ [RAG检索] 命中 {len(items)} 条，最佳分数: {res['best_score']:.4f}")
+
+        # 检索完强制卸载 embedding 模型
+        try:
+            unload_embedding_model(rag_index["embedding_model"])
+            print("♻️ [RAG检索] 已卸载 embedding 模型")
+        except:
+            pass
+
+        # 末尾显存清理
+        gc.collect()
+        if model_management is not None:
+            try:
+                model_management.soft_empty_cache()
+            except:
+                pass
+        if torch is not None and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        raw_json = json.dumps(items, ensure_ascii=False, indent=2)
+        return (ctx, raw_json, has_result)
+
 
 # ==============================================
 # 节点注册
@@ -825,6 +883,7 @@ NODE_CLASS_MAPPINGS = {
     "RagPromptLMStudioChatAdvanced": LMStudioRAGChatNode,
     "RagPromptLMStudioChatSimple": LMStudioRAGChatSimpleNode,
     "RagPromptExternalChatAdvanced": ExternalRAGChatNode,
+    "RagPromptRetriever": RAGRetrieverNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -834,4 +893,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "RagPromptLMStudioChatAdvanced": t("EasyRAG - LM Studio API (Advanced)"),
     "RagPromptLMStudioChatSimple": t("EasyRAG - LM Studio API (Simple)"),
     "RagPromptExternalChatAdvanced": t("EasyRAG - External API (Advanced)"),
+    "RagPromptRetriever": t("EasyRAG - RAG 纯检索（无需API）"),
 }
